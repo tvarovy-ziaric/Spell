@@ -8,4 +8,6 @@ Dva simulované telefóny sa cez sieť pripojili k duelu. Skúška overila jedno
 
 ## Čo čaká na skúšku
 
+Android klient má pripravenú úvodnú diagnostiku a dva terčíky na vytlačenie. Prvé zostavenie APK čaká na aktiváciu Unity Editora a dokončenie inštalácie podpory Androidu.
+
 Kalibráciu pomocou dvoch terčíkov a zhodu polohy virtuálneho objektu treba odmerať na dvoch telefónoch na ihrisku. Hrateľný duel je ďalšou etapou.
