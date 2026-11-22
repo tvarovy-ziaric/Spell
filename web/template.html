@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="sk">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="theme-color" content="#191923">
+  <meta name="description" content="Stav vývoja hry Spell pre Android, vydané APK a výsledky skúšok.">
+  <title>Spell — stav vývoja a verzie APK</title>
+  <style>
+    :root { color-scheme: dark; background: #191923; color: #f3f0e9; font: 100%/1.6 "Inter", system-ui, sans-serif; }
+    * { box-sizing: border-box; }
+    body { margin: 0; }
+    main, footer { width: min(67rem, 100%); margin-inline: auto; padding-inline: clamp(1.25rem, 6vw, 4.5rem); }
+    header { padding: clamp(2rem, 9vw, 6rem) 0 2.5rem; }
+    h1, h2 { font-family: "Baskervville", Georgia, serif; font-weight: 400; }
+    h1 { margin: 0; font-size: clamp(4.5rem, 16vw, 10.5rem); letter-spacing: -.075em; line-height: .94; }
+    header p { max-width: 33rem; margin: 1.3rem 0 0; color: #d5cced; font-size: clamp(1.05rem, 2vw, 1.35rem); }
+    section { border-top: 1px solid #565366; padding-block: 2rem; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 2fr); gap: 2rem; }
+    h2 { margin: 0; font-size: clamp(1.6rem, 4vw, 2.35rem); line-height: 1.2; letter-spacing: -.03em; }
+    h3 { font-size: 1.12rem; line-height: 1.4; margin: 1.75rem 0 .35rem; color: #e1d4ff; }
+    .content { min-width: 0; overflow-wrap: anywhere; }
+    .content > :first-child { margin-top: 0; }
+    p, ul { margin: 0 0 .7rem; }
+    ul { padding-inline-start: 1.4rem; }
+    code { font: .9em ui-monospace, monospace; }
+    footer { margin-bottom: 2rem; }
+    footer div { border-top: 1px solid #565366; padding-top: 1.25rem; }
+    a { color: #d5cced; text-underline-offset: .22em; }
+    a:focus-visible { outline: 2px solid currentColor; outline-offset: 4px; }
+    @media(max-width: 42rem) { section { grid-template-columns: 1fr; gap: 1.3rem; } }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Spell</h1>
+      <p>AR hra pre dvoch hráčov na jednom ihrisku. Každý sleduje duel cez kameru svojho Androidu.</p>
+    </header>
+    <section aria-labelledby="status"><h2 id="status">Stav vývoja</h2><div class="content">{{STATUS}}</div></section>
+    <section aria-labelledby="builds"><h2 id="builds">Changelog APK</h2><div class="content">{{BUILDS}}</div></section>
+  </main>
+  <footer><div><a href="https://github.com/tvarovy-ziaric/Spell">Repozitár projektu na GitHube</a></div></footer>
+</body>
+</html>
