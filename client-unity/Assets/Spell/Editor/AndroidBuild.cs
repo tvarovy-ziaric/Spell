@@ -60,11 +60,13 @@ namespace Spell.Editor
             string oldVersion = PlayerSettings.bundleVersion;
             int oldCode = PlayerSettings.Android.bundleVersionCode;
             var oldBundle = EditorUserBuildSettings.buildAppBundle;
+            var oldExport = EditorUserBuildSettings.exportAsGoogleAndroidProject;
             try
             {
                 PlayerSettings.bundleVersion = request.versionName;
                 PlayerSettings.Android.bundleVersionCode = request.versionCode;
                 EditorUserBuildSettings.buildAppBundle = false;
+                EditorUserBuildSettings.exportAsGoogleAndroidProject = false;
                 ReservedOutput = partial;
                 BuildReport report = BuildPipeline.BuildPlayer(new BuildPlayerOptions {
                     scenes = new[] { "Assets/Spell/Preflight.unity" },
@@ -81,6 +83,7 @@ namespace Spell.Editor
                 PlayerSettings.bundleVersion = oldVersion;
                 PlayerSettings.Android.bundleVersionCode = oldCode;
                 EditorUserBuildSettings.buildAppBundle = oldBundle;
+                EditorUserBuildSettings.exportAsGoogleAndroidProject = oldExport;
                 if (File.Exists(partial)) File.Delete(partial);
                 if (Directory.GetFileSystemEntries(attempt).Length == 0) Directory.Delete(attempt);
             }
