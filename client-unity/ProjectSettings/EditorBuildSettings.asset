@@ -1,0 +1,13 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!1045 &1
+EditorBuildSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 2
+  m_Scenes:
+  - enabled: 1
+    path: Assets/Spell/Preflight.unity
+    guid: 75b1cb367bb4442ba7dc58a9f028100c
+  m_configObjects:
+    com.unity.xr.management.loader_settings: {fileID: 11400000, guid: fa6093a1b4be4758972f700350a594f0, type: 2}
+    UnityEditor.XR.ARCore.ARCoreSettings: {fileID: 11400000, guid: ca01ce7dadb24fcfad7f1410b904fd45, type: 2}

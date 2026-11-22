@@ -1,0 +1,29 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!129 &1
+PlayerSettings:
+  m_ObjectHideFlags: 0
+  serializedVersion: 28
+  productGUID: a8f4a520aad342d89342900d7c4dda80
+  companyName: VibeKing
+  productName: Spell
+  bundleVersion: 0.1.0
+  applicationIdentifier:
+    Android: site.arnavigator.spell
+    Standalone: site.arnavigator.spell
+  overrideDefaultApplicationIdentifier: 1
+  AndroidBundleVersionCode: 1
+  AndroidMinSdkVersion: 24
+  AndroidTargetSdkVersion: 0
+  AndroidTargetArchitectures: 2
+  androidUseCustomKeystore: 0
+  m_BuildTargetGraphicsAPIs:
+  - m_BuildTarget: AndroidPlayer
+    m_APIs: 0b000000
+    m_Automatic: 0
+  scriptingBackend:
+    Android: 1
+  activeInputHandler: 0
+  useDeterministicCompilation: 1
+  gcIncremental: 1
+  androidApplicationEntry: 1
