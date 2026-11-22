@@ -1,0 +1,9 @@
+**
+!shared/
+!shared/geometry/
+!shared/geometry/**
+!server/
+!server/*.cs
+!server/*.csproj
+!contracts/
+!contracts/spell_v1.proto

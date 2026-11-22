@@ -1,0 +1,51 @@
+syntax = "proto3";
+package spell.v1;
+option csharp_namespace = "Spell.Protocol.V1";
+
+// Local arena, metres: east, up, north. Device times use one monotonic clock.
+message Vector3M { double east = 1; double up = 2; double north = 3; }
+message Orientation { double x = 1; double y = 2; double z = 3; double w = 4; }
+enum Tracking { TRACKING_UNKNOWN = 0; TRACKING_LIMITED = 1; TRACKING_GOOD = 2; }
+message PoseSample {
+  uint64 sequence = 1;
+  uint32 arena_revision = 2;
+  int64 estimated_us = 3;
+  optional int64 last_gnss_us = 4;
+  optional int64 last_visual_us = 5;
+  Vector3M position = 6;
+  Orientation orientation = 7;
+  Tracking tracking = 8;
+  optional double position_sigma_m = 9;
+  optional double angle_sigma_deg = 10;
+}
+message VisualObservation {
+  enum Subject { UNKNOWN = 0; MARKER = 1; PARTICIPANT = 2; }
+  Subject subject = 1;
+  string subject_id = 2;
+  int64 frame_us = 3;
+  Vector3M bearing = 4;
+  double confidence = 5;
+  bool identity_confirmed = 6;
+}
+message Ready {
+  uint32 arena_revision = 1;
+  string arena_sha256 = 2;
+  string preset = 3;
+  bool loaded_in_ram = 4;
+  bool calibrated = 5;
+}
+enum Phase { PREPARING = 0; PLAYING = 1; PAUSED = 2; }
+message Ping { int64 client_us = 1; }
+message Pong { int64 client_us = 1; int64 server_us = 2; }
+message Snapshot {
+  Phase phase = 1;
+  uint64 revision = 2;
+  bool founder_ready = 3;
+  bool guest_ready = 4;
+}
+message ClientFrame {
+  oneof payload { Ready ready = 1; PoseSample pose = 2; Ping ping = 3; }
+}
+message ServerFrame {
+  oneof payload { Snapshot snapshot = 1; Pong pong = 2; }
+}
