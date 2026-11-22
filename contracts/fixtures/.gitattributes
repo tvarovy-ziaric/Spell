@@ -1,0 +1,2 @@
+*.bytes binary
+*.sha256 text eol=lf

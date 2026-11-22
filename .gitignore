@@ -1,0 +1,11 @@
+**/bin/
+**/obj/
+**/__pycache__/
+.artifacts/
+artifacts/
+*.apk
+*.aab
+*.jks
+*.keystore
+local.properties
+.env

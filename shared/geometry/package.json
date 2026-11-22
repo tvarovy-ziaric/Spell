@@ -1,0 +1,7 @@
+{
+  "name": "com.spell.geometry",
+  "version": "0.1.0",
+  "displayName": "Spell Geometry",
+  "description": "In-memory arena geometry shared by the Android client and duel server.",
+  "unity": "6000.3"
+}

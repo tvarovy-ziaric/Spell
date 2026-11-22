@@ -1,0 +1,7 @@
+<Project>
+  <PropertyGroup>
+    <!-- A Unity local package must not import .NET-generated C# files. -->
+    <BaseIntermediateOutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\dotnet\geometry\obj\</BaseIntermediateOutputPath>
+    <BaseOutputPath>$(MSBuildThisFileDirectory)..\..\artifacts\dotnet\geometry\bin\</BaseOutputPath>
+  </PropertyGroup>
+</Project>
