@@ -10,6 +10,10 @@ Ak Android SDK leží mimo bežnej cesty, nastav `ANDROID_SDK_ROOT` alebo úpln�
 
 ## Obnova prerušeného odovzdania
 
+Pri skúške hotového APK nastav pred zostavením `SPELL_TEST_APK_BEFORE_DELIVERY=1`. Po skúške odovzdaj tú istú rezerváciu príkazom `finish` a uveď skutočný výsledok v changelogu. Pri zmene párovania otvor APK ako zakladateľ, vytvor hru a nasnímaj zobrazený QR kód v APK druhého hráča. Skontroluj na oboch obrazovkách potvrdenie spojenia a načítanie ihriska.
+
 Po výpadku zopakuj `finish` nad tým istým súborom žiadosti. Potvrdené doručenie sa pri opakovaní preskočí. Zlyhanie webu umožní odoslanie APK a ďalší pokus dokončí publikovanie. Pri výslovnom odmietnutí Telegramom zostáva odoslanie pripravené na ďalší pokus.
 
 Pri strate odpovede po začatí nahrávania skontroluj v histórii súkromného chatu presné APK. Potvrdené doručenie zaeviduj cez `python tools/release.py resolve "cesta k request.json" --message-id ČÍSLO`. Až po potvrdení, že dokument v chate chýba, použi `--confirmed-absent` a zopakuj `finish`. Pri overení nástroja spusti `python tools/test_release.py`; skúšky používajú dočasné súbory a simulovaný Telegram.
+
+Ak je prijatý dokument viditeľný priamo v klientovi Telegramu bez číselného ID správy, použi pri `resolve` parameter `--received-filename` s presným názvom prijatého APK.

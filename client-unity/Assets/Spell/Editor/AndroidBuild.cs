@@ -88,6 +88,11 @@ namespace Spell.Editor
                 if (Directory.GetFileSystemEntries(attempt).Length == 0) Directory.Delete(attempt);
             }
 
+            if (Environment.GetEnvironmentVariable("SPELL_TEST_APK_BEFORE_DELIVERY") == "1")
+            {
+                Debug.Log($"APK pripravené na skúšku na Androide: {request.apkPath}");
+                return;
+            }
             try { Debug.Log(Run("python", "tools/release.py finish \"" + requestPath + "\"", root)); }
             catch (Exception error)
             {

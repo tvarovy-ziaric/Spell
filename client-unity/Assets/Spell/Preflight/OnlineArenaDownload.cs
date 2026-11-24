@@ -13,6 +13,7 @@ namespace Spell.Client.Preflight
 #nullable enable
     public static class GuestInvite
     {
+        public const string ServerOrigin = "https://spell.arnavigator.site";
         public const int MaxArenaBytes = 18 * 1024 * 1024;
         const string Prefix = "spell://join/v1/";
 
@@ -41,7 +42,12 @@ namespace Spell.Client.Preflight
 
         public static bool Supports(string? role, string? token, int revision, string? preset, string? sha, string? path)
         {
-            return role == "guest" && Hex(token, 64) && revision == 1 &&
+            return SupportsSeat("guest", role, token, revision, preset, sha, path);
+        }
+
+        public static bool SupportsSeat(string expectedRole, string? role, string? token, int revision, string? preset, string? sha, string? path)
+        {
+            return (role == "guest" || role == "founder") && role == expectedRole && Hex(token, 64) && revision == 1 &&
                 preset == "diagnostic-v1" && Hex(sha, 64) && path == "/v1/arena";
         }
 
@@ -81,6 +87,17 @@ namespace Spell.Client.Preflight
             public string preset = "";
             public string arenaPath = "";
         }
+        [Serializable] sealed class Invitation
+        {
+            public string payload = "";
+            public string qrPngBase64 = "";
+        }
+        [Serializable] sealed class Created
+        {
+            public Ticket player = null;
+            public Invitation invitation = null;
+        }
+        [Serializable] sealed class Pairing { public bool paired = false; }
         [Serializable] sealed class Join { public string code; public string attempt; }
 
         // Enforce the limit while receiving, including chunked replies with no Content-Length.
@@ -113,69 +130,103 @@ namespace Spell.Client.Preflight
             public byte[] Bytes() => buffer.ToArray();
         }
 
-        [SerializeField] string serverOrigin = "";
-        string invitation = "";
-        string status = "";
-        Uri activeOrigin;
-        string activeCode, attempt;
+        enum Job { None, Create, Scan, Join, Download, Renew, Leave }
+
+        static readonly Uri Server = new Uri(GuestInvite.ServerOrigin);
+        QrScanner scanner;
+        Texture2D qr;
         Ticket ticket;
-        bool queued, busy;
+        Job queued, retry;
+        bool busy, scanning, paired, polling;
+        string code, hostAttempt, joinAttempt;
+        string status = "", connectionNotice = "";
+        float nextPoll;
         public ArenaSurface Arena { get; private set; }
 
-        public void Draw()
+        void Awake() => scanner = gameObject.AddComponent<QrScanner>();
+
+        public void Draw(GUIStyle label, float availableWidth)
         {
-            GUILayout.Space(12);
-            GUILayout.Label("Online ihrisko pre hosťa");
             bool previous = GUI.enabled;
+            GUI.enabled = previous && !busy && !scanning && queued == Job.None;
             if (ticket == null)
             {
-                GUI.enabled = previous && !busy && !queued;
-                GUILayout.Label("HTTPS adresa herného servera");
-                serverOrigin = GUILayout.TextField(serverOrigin, 1024);
-                GUILayout.Label("Pozvánka spell://join/v1/…");
-                invitation = GUILayout.TextField(invitation, 128);
+                if (GUILayout.Button("Vytvoriť hru", GUILayout.MinHeight(48))) queued = Job.Create;
+                if (GUILayout.Button("Naskenovať QR kód", GUILayout.MinHeight(48))) queued = Job.Scan;
             }
-            GUI.enabled = previous && !busy && !queued && Arena == null;
-            if (GUILayout.Button(ticket == null ? "Pripojiť sa a načítať ihrisko" : "Zopakovať prenos ihriska",
-                GUILayout.MinHeight(44))) queued = true;
-            GUI.enabled = previous;
-            if (status.Length > 0) GUILayout.Label(status);
-            if (ticket != null && !busy && !queued &&
-                GUILayout.Button("Použiť inú pozvánku", GUILayout.MinHeight(40)))
+            else
             {
-                Arena = null;
-                ticket = null;
-                activeOrigin = null;
-                activeCode = attempt = null;
-                invitation = status = "";
+                if (IsHost && !paired)
+                {
+                    GUILayout.Label("Ukáž QR kód druhému hráčovi.", label);
+                    if (qr != null)
+                    {
+                        float side = Mathf.Min(280f, Mathf.Max(80f, availableWidth - 50f));
+                        GUILayout.BeginHorizontal();
+                        GUILayout.FlexibleSpace();
+                        Rect area = GUILayoutUtility.GetRect(side, side, GUILayout.Width(side), GUILayout.Height(side));
+                        GUI.DrawTexture(area, qr, ScaleMode.ScaleToFit, false);
+                        GUILayout.FlexibleSpace();
+                        GUILayout.EndHorizontal();
+                    }
+                    if (GUILayout.Button("Obnoviť QR kód", GUILayout.MinHeight(44))) queued = Job.Renew;
+                }
+                if (paired) GUILayout.Label("Obaja hráči sú v hre.", label);
             }
+            if (status.Length > 0) GUILayout.Label(status, label);
+            if (connectionNotice.Length > 0) GUILayout.Label(connectionNotice, label);
+            if (retry != Job.None && retry != Job.Create && retry != Job.Renew && retry != Job.Leave &&
+                GUILayout.Button("Skúsiť znova", GUILayout.MinHeight(44))) queued = retry;
+            if (ticket != null && GUILayout.Button("Opustiť hru", GUILayout.MinHeight(44))) queued = Job.Leave;
+            GUI.enabled = previous;
         }
+
+        bool IsHost => ticket?.seat.role == "founder";
 
         void Update()
         {
-            if (!queued || busy) return;
-            queued = false;
-            if (ticket == null)
+            if (busy || scanning) return;
+            Job job = queued;
+            queued = Job.None;
+            if (job == Job.Scan)
             {
-                if (!GuestInvite.TryParse(serverOrigin, invitation, out var origin, out var code))
-                {
-                    status = "Skontroluj HTTPS adresu servera a celú pozvánku.";
-                    return;
-                }
-                if (origin != activeOrigin || code != activeCode)
-                {
-                    activeOrigin = origin;
-                    activeCode = code;
-                    attempt = GuestInvite.NewAttempt();
-                }
+                retry = Job.None;
+                status = "";
+                scanning = true;
+                scanner.Scan(Decoded, error => { scanning = false; status = error ?? ""; });
             }
-            busy = true;
-            StartCoroutine(Run());
+            else if (job != Job.None)
+            {
+                busy = true;
+                retry = job;
+                StartCoroutine(Run(job));
+            }
+            else if (ticket != null && !polling && Time.unscaledTime >= nextPoll)
+            {
+                polling = true;
+                StartCoroutine(CheckPairing(ticket));
+            }
         }
 
-        IEnumerator Run()
+        void Decoded(string payload)
         {
-            using (var work = Requests())
+            scanning = false;
+            if (!GuestInvite.TryParse(GuestInvite.ServerOrigin, payload, out _, out var scanned))
+            {
+                status = "Tento QR kód nepatrí do hry Spell. Naskenuj kód z telefónu prvého hráča.";
+                return;
+            }
+            if (code != scanned)
+            {
+                code = scanned;
+                joinAttempt = GuestInvite.NewAttempt();
+            }
+            queued = Job.Join;
+        }
+
+        IEnumerator Run(Job job)
+        {
+            using (var work = Requests(job))
             {
                 try
                 {
@@ -188,7 +239,7 @@ namespace Spell.Client.Preflight
                             wait = work.Current;
                         }
                         catch (OutOfMemoryException) { status = "Na načítanie ihriska chýba pamäť."; break; }
-                        catch (Exception) { status = "Príprava online ihriska zlyhala. Skontroluj pripojenie a reláciu."; break; }
+                        catch (Exception) { status = "Príprava hry zlyhala. Skús to znova."; break; }
                         yield return wait;
                     }
                 }
@@ -196,66 +247,186 @@ namespace Spell.Client.Preflight
             }
         }
 
-        System.Collections.Generic.IEnumerator<object> Requests()
+        System.Collections.Generic.IEnumerator<object> Requests(Job job)
         {
-            if (ticket == null)
+            if (job == Job.Leave)
             {
-                status = "Overujem pozvánku…";
-                var body = new LimitedBody(16 * 1024);
-                using (var request = new UnityWebRequest(new Uri(activeOrigin, "/v1/join"), "POST"))
+                status = "Opúšťam hru…";
+                using var request = Request("/v1/session", "DELETE", new LimitedBody(2048));
+                request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
+                yield return request.SendWebRequest();
+                if (request.result != UnityWebRequest.Result.Success && request.responseCode != 401 &&
+                    request.responseCode != 403 && request.responseCode != 404)
                 {
-                    request.downloadHandler = body;
-                    request.redirectLimit = 0;
-                    request.timeout = 15;
-                    var json = JsonUtility.ToJson(new Join { code = activeCode, attempt = attempt });
-                    request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(json));
-                    request.SetRequestHeader("Content-Type", "application/json");
-                    yield return request.SendWebRequest();
-                    if (!Success(request, body)) yield break;
-                    var reply = JsonUtility.FromJson<Ticket>(Encoding.UTF8.GetString(body.Bytes()));
-                    if (!GuestInvite.Supports(reply?.seat?.role, reply?.seat?.token, reply?.arenaRevision ?? 0,
-                        reply?.preset, reply?.arenaSha256, reply?.arenaPath))
+                    status = "Server nepotvrdil ukončenie hry. Skús ju opustiť znova.";
+                    yield break;
+                }
+                ClearRoom();
+                status = "Hra bola ukončená.";
+                yield break;
+            }
+
+            if (job == Job.Create || job == Job.Join || job == Job.Renew)
+            {
+                bool host = job != Job.Join;
+                status = job == Job.Renew ? "Obnovujem QR kód…" : host ? "Vytváram hru…" : "Pripájam sa k hre…";
+                var body = new LimitedBody(64 * 1024);
+                string path = job == Job.Renew ? "/v1/invite" : host ? "/v1/session" : "/v1/join";
+                using (var request = Request(path, "POST", body))
+                {
+                    if (job == Job.Create)
                     {
-                        status = "Server vrátil nepodporovanú revíziu, pravidlá alebo údaje relácie.";
+                        hostAttempt ??= GuestInvite.NewAttempt();
+                        request.SetRequestHeader("Idempotency-Key", hostAttempt);
+                    }
+                    else if (job == Job.Renew) request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
+                    else
+                    {
+                        var join = new Join { code = code, attempt = joinAttempt };
+                        request.uploadHandler = new UploadHandlerRaw(Encoding.UTF8.GetBytes(JsonUtility.ToJson(join)));
+                        request.SetRequestHeader("Content-Type", "application/json");
+                    }
+                    yield return request.SendWebRequest();
+                    if (!Success(request, body, job)) yield break;
+                    string json = Encoding.UTF8.GetString(body.Bytes());
+                    if (job == Job.Renew)
+                    {
+                        SetQr(JsonUtility.FromJson<Invitation>(json));
+                        retry = Job.None;
+                        status = Arena == null ? "QR kód bol obnovený." : "Ihrisko je pripravené v telefóne.";
+                        if (Arena == null) queued = Job.Download;
                         yield break;
                     }
+                    var created = host ? JsonUtility.FromJson<Created>(json) : null;
+                    var reply = host ? created?.player : JsonUtility.FromJson<Ticket>(json);
+                    if (!GuestInvite.SupportsSeat(host ? "founder" : "guest", reply?.seat?.role, reply?.seat?.token,
+                        reply?.arenaRevision ?? 0, reply?.preset, reply?.arenaSha256, reply?.arenaPath))
+                    {
+                        status = "Server vrátil nepodporované údaje hry.";
+                        yield break;
+                    }
+                    if (host) SetQr(created.invitation);
                     ticket = reply;
-                    invitation = activeCode = "";
+                    paired = !host;
+                    code = joinAttempt = null;
+                    nextPoll = Time.unscaledTime;
                 }
             }
-            status = "Hosť je pripojený. Načítavam celé ihrisko…";
+
+            status = "Načítavam ihrisko do telefónu…";
+            retry = Job.Download;
             var arenaBody = new LimitedBody(GuestInvite.MaxArenaBytes);
-            using (var request = new UnityWebRequest(new Uri(activeOrigin, "/v1/arena"), "GET"))
+            using (var request = Request(ticket.arenaPath, "GET", arenaBody))
             {
-                request.downloadHandler = arenaBody;
-                request.redirectLimit = 0;
                 request.timeout = 40;
                 request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                 yield return request.SendWebRequest();
-                if (!Success(request, arenaBody)) yield break;
-                var bytes = arenaBody.Bytes();
-                try { Arena = ArenaPreflight.Load(bytes, ticket.arenaSha256); }
+                if (!Success(request, arenaBody, Job.Download)) yield break;
+                try { Arena = ArenaPreflight.Load(arenaBody.Bytes(), ticket.arenaSha256); }
                 catch (InvalidDataException)
                 {
                     status = "Ihrisko neprešlo kontrolou obsahu alebo platnosti dát.";
                     yield break;
                 }
-                status = $"Online ihrisko je v RAM. {Arena.Width} × {Arena.Height} vzoriek, {bytes.Length} B. " +
-                    $"Revízia {ticket.arenaRevision}, pravidlá {ticket.preset}.";
+                status = $"Ihrisko je v pamäti telefónu. Mriežka {Arena.Width} × {Arena.Height}.";
+                retry = Job.None;
             }
         }
 
-        bool Success(UnityWebRequest request, LimitedBody body)
+        static UnityWebRequest Request(string path, string method, LimitedBody body)
         {
-            if (!body.Rejected && request.result == UnityWebRequest.Result.Success &&
-                request.responseCode == 200) return true;
+            return new UnityWebRequest(new Uri(Server, path), method)
+            {
+                downloadHandler = body,
+                redirectLimit = 0,
+                timeout = 15
+            };
+        }
+
+        IEnumerator CheckPairing(Ticket current)
+        {
+            try
+            {
+                var body = new LimitedBody(2048);
+                using var request = Request("/v1/session", "GET", body);
+                request.SetRequestHeader("Authorization", "Bearer " + current.seat.token);
+                yield return request.SendWebRequest();
+                if (ticket != current || busy || queued != Job.None) yield break;
+                if (request.responseCode == 401 || request.responseCode == 403 || request.responseCode == 404)
+                {
+                    ClearRoom();
+                    status = "Hra sa skončila. Môžeš vytvoriť novú alebo naskenovať ďalší QR kód.";
+                    yield break;
+                }
+                connectionNotice = "Overujem spojenie s hrou…";
+                if (request.result != UnityWebRequest.Result.Success || body.Rejected) yield break;
+                var state = JsonUtility.FromJson<Pairing>(Encoding.UTF8.GetString(body.Bytes()));
+                if (state == null) yield break;
+                paired = state.paired;
+                connectionNotice = "";
+                if (paired) ClearQr();
+            }
+            finally
+            {
+                nextPoll = Time.unscaledTime + (paired ? 8f : 2f);
+                polling = false;
+            }
+        }
+
+        void SetQr(Invitation invitation)
+        {
+            if (invitation == null || !GuestInvite.TryParse(GuestInvite.ServerOrigin, invitation.payload, out _, out _))
+                throw new FormatException();
+            byte[] png = Convert.FromBase64String(invitation.qrPngBase64);
+            // Bound dimensions before handing server data to Unity's image decoder.
+            if (png.Length < 33 || png[0] != 137 || png[1] != 80 || png[2] != 78 || png[3] != 71 ||
+                png[16] != 0 || png[17] != 0 || png[18] > 3 || png[20] != 0 || png[21] != 0 ||
+                png[18] != png[22] || png[19] != png[23])
+                throw new FormatException();
+            var next = new Texture2D(2, 2, TextureFormat.RGBA32, false) { filterMode = FilterMode.Point };
+            if (!ImageConversion.LoadImage(next, png, true))
+            {
+                Destroy(next);
+                throw new FormatException();
+            }
+            ClearQr();
+            qr = next;
+        }
+
+        bool Success(UnityWebRequest request, LimitedBody body, Job job)
+        {
+            if (!body.Rejected && request.result == UnityWebRequest.Result.Success && request.responseCode == 200) return true;
             if (body.Rejected) status = "Odpoveď prekročila povolenú veľkosť.";
-            else if (request.responseCode == 401) status = "Server odmietol pozvánku. Skontroluj platnosť kódu.";
-            else if (request.responseCode == 403) status = "Server v tomto stave nepovolil stiahnutie ihriska.";
-            else if (request.responseCode >= 300 && request.responseCode < 400) status = "Server požiadal o nepovolené presmerovanie.";
-            else status = "Prenos zlyhal. Môžeš ho zopakovať.";
+            else if (job == Job.Join && request.responseCode == 401)
+            {
+                status = "QR kód už neplatí. Požiadaj prvého hráča o nový a naskenuj ho.";
+                retry = Job.None;
+            }
+            else if (job == Job.Create && request.responseCode == 429) status = "Server je vyťažený. Skús vytvoriť hru o chvíľu.";
+            else if (job == Job.Renew && request.responseCode == 401) status = "QR kód už nemožno obnoviť. Overujem obsadenie hry.";
+            else if (job == Job.Download && request.responseCode == 403) status = "Server v tomto stave nepovolil stiahnutie ihriska.";
+            else status = "Spojenie s herným serverom zlyhalo. Skontroluj internet a skús to znova.";
             return false;
         }
+
+        void ClearRoom()
+        {
+            ClearQr();
+            ticket = null;
+            Arena = null;
+            paired = false;
+            hostAttempt = joinAttempt = code = null;
+            connectionNotice = "";
+            retry = Job.None;
+        }
+
+        void ClearQr()
+        {
+            if (qr != null) Destroy(qr);
+            qr = null;
+        }
+
+        void OnDestroy() => ClearQr();
     }
 #endif
 }

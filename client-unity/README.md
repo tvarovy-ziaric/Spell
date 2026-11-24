@@ -1,6 +1,8 @@
 # Android klient Spell
 
-Projekt otvára Unity 6000.3.29f1 s Android Build Support, Android SDK & NDK Tools a OpenJDK. Úvodná scéna `Assets/Spell/Preflight.unity` zobrazí výsledok načítania spoločného skúšobného ihriska. Editor aj Android načítavajú ten istý súbor z `contracts/fixtures`. Pri zostavení ho Unity vloží priamo do APK s očakávaným kontrolným súčtom.
+Projekt otvára Unity 6000.3.29f1 s Android Build Support, Android SDK & NDK Tools a OpenJDK. Na úvodnej obrazovke prvý hráč stlačí **Vytvoriť hru** a ukáže QR kód. Druhý stlačí **Naskenovať QR kód** a namieri kameru na prvý telefón. Aplikácia komunikuje s herným serverom na `https://spell.arnavigator.site`. Oba telefóny pred hrou prevezmú overené ihrisko do pamäte. Zakladateľ môže obnoviť pozvanie a obaja hráči môžu hru opustiť.
+
+Úvodná scéna `Assets/Spell/Preflight.unity` obsahuje aj kontrolu lokálneho skúšobného ihriska. Editor aj Android načítavajú ten istý súbor z `contracts/fixtures`. Pri zostavení ho Unity vloží priamo do APK s očakávaným kontrolným súčtom.
 
 Na podporovanom telefóne tlačidlo **Skontrolovať senzory** spustí diagnostiku ARCore a vyžiada prístup ku kamere a polohe. Obraz kamery, relatívny pohyb od ARCore, pôvodné časy snímok a skutočné GNSS merania slúžia na miestnu kontrolu. Počítadlo odhadov sleduje samostatný takt približne 10 Hz. Kalibráciu ihriska oboma hráčmi a meranie priestorovej zhody preverí ďalší míľnik.
 

@@ -88,7 +88,10 @@ namespace Spell.Client.Preflight
             }
             GUILayout.BeginArea(new Rect(12, 12, safe.width / scale - 24, safe.height / scale - 24), GUI.skin.box);
             scroll = GUILayout.BeginScrollView(scroll);
-            GUILayout.Label("Spell · Kontrola ihriska", title);
+            GUILayout.Label("Spell · Hra pre dvoch", title);
+            online?.Draw(label, safe.width / scale - 24);
+            GUILayout.Space(20);
+            GUILayout.Label("Kontrola ihriska", label);
             GUILayout.Label(result, label);
             if (device != null)
             {
@@ -99,7 +102,6 @@ namespace Spell.Client.Preflight
                 if (!device.Running && GUILayout.Button("Skontrolovať senzory", GUILayout.MinHeight(46)))
                     device.Begin();
             }
-            online?.Draw();
             GUILayout.EndScrollView();
             GUILayout.EndArea();
             GUI.matrix = original;
