@@ -12,7 +12,9 @@ Android projekt je v [client-unity](client-unity). Pre prvé zostavenie potrebuj
 
 Koordinátor pridelí každému APK vlastné číslo a po zostavení overí doručenie do súkromného chatu codexer. [Postup vydania a obnovenia prenosu](tools/README.md)
 
-Ručné spustenie servera vyžaduje súkromný náhodný `SPELL_FOUNDER_KEY` a parametre `--arena` a `--digest`. Pre lokálny vývoj používaj `--urls http://127.0.0.1:5080`. Docker obraz sa zostavuje z koreňa cez `docker build -f server/Dockerfile -t spell-server .`. Pri spustení sa balík pripojí iba na čítanie a kľúč sa odovzdá cez prostredie. [Protokol relácie](contracts/session.md)
+Herné API na `https://spell.arnavigator.site/v1/` umožňuje prvému telefónu vytvoriť hru s pevnými pravidlami. Druhý telefón načíta QR z displeja zakladateľa. Oba telefóny dostanú rovnaké ihrisko. [Protokol relácie](contracts/session.md)
+
+Server pri spustení vyžaduje parametre `--arena` a `--digest`. Predvolený súkromný režim navyše vyžaduje náhodný `SPELL_FOUNDER_KEY`. Hráčske párovanie aktivuje prevádzkovateľ prepínačom `--player-hosting true`. Pre lokálny vývoj používaj `--urls http://127.0.0.1:5080`. Docker obraz sa zostavuje z koreňa cez `docker build -f server/Dockerfile -t spell-server .`, balík sa pripája iba na čítanie. [Prevádzka domáceho servera](web/README.md)
 
 Verejný stav vývoja a chronologický prehľad APK sú na [spell.arnavigator.site](https://spell.arnavigator.site).
 

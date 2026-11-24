@@ -26,8 +26,9 @@ Zdroje podporujú obyčajné odseky, nadpisy `##` a `###`, odrážky `-`, tučn�
 
 ## Prevádzka na hostiteľovi
 
-Po prihlásení prevádzkového používateľa Windows spúšťa naplánované úlohy `Spell Status Origin` a `Spell Status Tunnel`. Pri chybe zopakujú spustenie. Verejná dostupnosť závisí od zapnutého počítača, aktívnej používateľskej relácie a internetového pripojenia.
+Po prihlásení prevádzkového používateľa Windows spúšťa naplánované úlohy `Spell Status Origin`, `Spell Duel API` a `Spell Status Tunnel`. Pri chybe zopakujú spustenie. Verejná dostupnosť závisí od zapnutého počítača, aktívnej používateľskej relácie a internetového pripojenia.
 
 - Origin spúšťa `python web/site.py serve` a obsluhuje HTML na `127.0.0.1:18873`. Pre inú lokálnu skúšku možno obom príkazom odovzdať `--page C:\cesta\index.html` a serveru `--port`.
-- Samostatný tunel `spell-status` smeruje hostiteľa `spell.arnavigator.site` na tento port. Konfigurácia a poverenia tunela patria do používateľského priečinka mimo Gitu.
+- Úloha `Spell Duel API` spúšťa publikované zostavenie .NET 10 z `%LOCALAPPDATA%\Spell\server\publish` s parametrami `--urls http://127.0.0.1:18874 --player-hosting true --arena <balík> --digest <SHA-256>`. Pilot používa kópiu `contracts/fixtures/hill.bytes` a jeho súčet. Nové zostavenie priprav cez `dotnet publish server/Spell.Server.csproj -c Release -p:UseAppHost=false -o <nový-priečinok>`. Výmenu bežiaceho servera načasuj medzi reláciami.
+- Samostatný tunel `spell-status` má pre hostiteľa `spell.arnavigator.site` prvé pravidlo s cestou `^/v1(/|$)` na port 18874 a druhé pravidlo pre web na port 18873. Konfigurácia a poverenia tunela patria do používateľského priečinka mimo Gitu.
 - Pri obnove hostiteľa najprv vygeneruj stránku, obnov poverenia tunela zo súkromnej zálohy a spusti origin a konektor. Over lokálnu odpoveď, pripojenie cez `cloudflared tunnel info spell-status` a zhodu verejnej stránky.

@@ -1,4 +1,5 @@
 using System.Net;
+using System.Diagnostics;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
 using System.Net.WebSockets;
@@ -29,18 +30,28 @@ Reject(() => ArenaPreflight.Load(unsupported, unknownHash));
 Reject(() => new ArenaPackage(unsupported, unknownHash));
 Console.WriteLine("PASS client preflight and server arena acceptance, corruption, unsupported version and NoData");
 
-using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(25));
+var poseClock = Stopwatch.StartNew();
+using var deadline = new CancellationTokenSource(TimeSpan.FromSeconds(45));
 var ct = deadline.Token;
 using var http = new HttpClient { BaseAddress = new Uri(args[1]) };
+bool playerHosting = args.Skip(2).Contains("--player-hosting");
 using var unauthorized = await http.PostAsync("v1/session", null, ct);
-Assert(unauthorized.StatusCode == HttpStatusCode.Unauthorized, "founder credential");
-http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Environment.GetEnvironmentVariable("SPELL_FOUNDER_KEY"));
+Assert(unauthorized.StatusCode == (playerHosting ? HttpStatusCode.BadRequest : HttpStatusCode.Unauthorized),
+    "creation requires a unique attempt or private founder credential");
+if (!playerHosting)
+    http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", Environment.GetEnvironmentVariable("SPELL_FOUNDER_KEY"));
 http.DefaultRequestHeaders.Add("Idempotency-Key", Guid.NewGuid().ToString("N"));
 var created = await Post("v1/session", null);
-string founderToken = Token(created.GetProperty("player"));
+var founder = created.GetProperty("player");
+string founderToken = Token(founder);
+Assert(GuestInvite.SupportsSeat("founder", founder.GetProperty("seat").GetProperty("role").GetString(), founderToken,
+    founder.GetProperty("arenaRevision").GetInt32(), founder.GetProperty("preset").GetString(),
+    founder.GetProperty("arenaSha256").GetString(), founder.GetProperty("arenaPath").GetString()), "mobile accepts founder");
 var founderRetry = await Post("v1/session", null);
 Assert(Token(founderRetry.GetProperty("player")) == founderToken, "founder recovered original seat");
 http.DefaultRequestHeaders.Remove("Idempotency-Key");
+http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", founderToken);
+Assert(!(await http.GetFromJsonAsync<JsonElement>("v1/session", ct)).GetProperty("paired").GetBoolean(), "waiting for guest");
 var invite = created.GetProperty("invitation");
 Assert(Convert.FromBase64String(invite.GetProperty("qrPngBase64").GetString()!)[1] == 80, "QR image");
 string payload = invite.GetProperty("payload").GetString()!;
@@ -64,6 +75,7 @@ Assert(reuse.StatusCode == HttpStatusCode.Unauthorized, "one-time invitation");
 foreach (var token in new[] { founderToken, guestToken })
 {
     http.DefaultRequestHeaders.Authorization = new AuthenticationHeaderValue("Bearer", token);
+    Assert((await http.GetFromJsonAsync<JsonElement>("v1/session", ct)).GetProperty("paired").GetBoolean(), "both see pairing");
     var downloaded = await http.GetByteArrayAsync("v1/arena", ct);
     Assert(ArenaPreflight.Load(downloaded, digest).Sha256 == digest, "both clients preloaded");
 }
@@ -83,7 +95,9 @@ await Send(b, new() { Pose = Pose(1) });
 // Ping acts as a barrier for prior messages on this socket.
 await Send(b, new() { Ping = new Ping { ClientUs = 420 } });
 var pong = await Read(b);
+while (pong.Snapshot != null) pong = await Read(b);
 Assert(pong.Pong?.ClientUs == 420 && pong.Pong.ServerUs > 0, "hash mismatch held start and time ping worked");
+await Send(a, new() { Pose = Pose(2) });
 await Send(b, new() { Ready = ready });
 var started = await Until(b, s => s.Phase == Phase.Playing);
 await Until(a, s => s.Revision == started.Revision && s.Phase == Phase.Playing);
@@ -92,7 +106,7 @@ Assert(duringPlay.StatusCode == HttpStatusCode.Forbidden, "arena download closed
 await Send(b, new() { Ready = ready });
 await Send(b, new() { Pose = Pose(2, Tracking.Limited) });
 await Until(b, s => s.Phase == Phase.Paused && !s.GuestReady);
-await Send(a, new() { Pose = Pose(2) });
+await Send(a, new() { Pose = Pose(3) });
 await Send(b, new() { Pose = Pose(3) });
 var resumed = await Until(b, s => s.Phase == Phase.Playing);
 await Until(a, s => s.Revision == resumed.Revision && s.Phase == Phase.Playing);
@@ -100,12 +114,16 @@ await b.CloseOutputAsync(WebSocketCloseStatus.NormalClosure, "reconnect", ct);
 await Until(a, s => s.Revision > resumed.Revision && s.Phase == Phase.Paused && !s.GuestReady);
 using var rejoined = await Connect(guestToken);
 await Until(rejoined, s => s.Phase == Phase.Paused && !s.GuestReady);
-await Send(a, new() { Pose = Pose(3) });
+await Send(a, new() { Pose = Pose(4) });
 await Send(rejoined, new() { Ready = ready });
 await Send(rejoined, new() { Pose = Pose(1) });
 await Until(rejoined, s => s.Phase == Phase.Playing);
 await Until(rejoined, s => s.Phase == Phase.Paused);
-Console.WriteLine("PASS two loopback WebSocket clients, one-time QR, readiness, ping, quality loss, reconnect and tracking timeout");
+using var closed = await http.DeleteAsync("v1/session", ct);
+Assert(closed.StatusCode == HttpStatusCode.NoContent, "guest can leave and end the duel");
+using var ended = await http.GetAsync("v1/session", ct);
+Assert(ended.StatusCode == HttpStatusCode.Unauthorized, "ended seats revoked");
+Console.WriteLine("PASS two WebSocket clients, one-time QR, paired state, readiness, ping, quality loss, reconnect, tracking timeout and teardown");
 
 string Token(JsonElement player) => player.GetProperty("seat").GetProperty("token").GetString()!;
 async Task<JsonElement> Post(string path, object? data)
@@ -118,7 +136,9 @@ async Task<ClientWebSocket> Connect(string token)
 {
     var ws = new ClientWebSocket();
     ws.Options.SetRequestHeader("Authorization", "Bearer " + token);
-    await ws.ConnectAsync(new UriBuilder(new Uri(http.BaseAddress!, "v1/events")) { Scheme = "ws" }.Uri, ct);
+    var endpoint = new UriBuilder(new Uri(http.BaseAddress!, "v1/events"));
+    endpoint.Scheme = endpoint.Scheme == "https" ? "wss" : "ws";
+    await ws.ConnectAsync(endpoint.Uri, ct);
     return ws;
 }
 async Task Send(ClientWebSocket ws, ClientFrame frame) =>
@@ -141,9 +161,9 @@ async Task<Snapshot> Until(ClientWebSocket ws, Predicate<Snapshot> matches)
     while (true)
         if ((await Read(ws)).Snapshot is { } snapshot && matches(snapshot)) return snapshot;
 }
-static PoseSample Pose(ulong sequence, Tracking quality = Tracking.Good)
+PoseSample Pose(ulong sequence, Tracking quality = Tracking.Good)
 {
-    long stamp = (long)sequence * 100_000;
+    long stamp = poseClock.Elapsed.Ticks / 10;
     return new PoseSample { Sequence = sequence, ArenaRevision = 1, EstimatedUs = stamp, LastVisualUs = stamp,
         Tracking = quality, PositionSigmaM = 0.25, AngleSigmaDeg = 2,
         Position = new Vector3M { East = 3, North = 3 }, Orientation = new Orientation { W = 1 } };

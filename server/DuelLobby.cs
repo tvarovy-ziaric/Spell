@@ -90,6 +90,22 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
         lock (gate) return players.ContainsKey(token) && phase != Phase.Playing;
     }
 
+    public bool HasSeat(string token) { lock (gate) return players.ContainsKey(token); }
+    public bool Paired { get { lock (gate) return players.Count == 2; } }
+    public bool HasConnection { get { lock (gate) return players.Values.Any(p => p.Connection != null); } }
+
+    public void Close()
+    {
+        lock (gate)
+        {
+            foreach (var player in players.Values) player.Connection?.Writer.TryComplete();
+            players.Clear();
+            invitation = null;
+            lastJoin = null;
+            founderRequest = null;
+        }
+    }
+
     public Channel<ServerFrame>? Connect(string token)
     {
         lock (gate)
@@ -107,8 +123,7 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
     {
         lock (gate)
         {
-            var p = players[token];
-            if (p.Connection != connection) return;
+            if (!players.TryGetValue(token, out var p) || p.Connection != connection) return;
             bool wasReady = p.Ready;
             p.Connection = null;
             p.Prepared = p.Tracking = false;
@@ -124,8 +139,7 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
     {
         lock (gate)
         {
-            var p = players[token];
-            if (p.Connection != connection) return;
+            if (!players.TryGetValue(token, out var p) || p.Connection != connection) return;
             bool wasReady = p.Ready;
             if (frame.Ping != null)
             {
