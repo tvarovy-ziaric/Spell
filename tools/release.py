@@ -13,6 +13,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 from urllib.parse import urlencode
 import uuid
 
@@ -36,7 +37,14 @@ def atomic_write(path, text):
             tmp.write(text)
             tmp.flush()
             os.fsync(tmp.fileno())
-        os.replace(tmp.name, path)
+        for attempt in range(7):
+            try:
+                os.replace(tmp.name, path)
+                break
+            except PermissionError as error:
+                if getattr(error, "winerror", None) not in (5, 32) or attempt == 6:
+                    raise
+                time.sleep(0.05 * 2**attempt)
     finally:
         Path(tmp.name).unlink(missing_ok=True)
 
@@ -276,11 +284,15 @@ def deliver(req, ledger, state, credentials, verify, send):
     save_json(ledger, state)
 
 
-def resolve(path, message_id):
+def resolve(path, message_id, received_filename=None):
     ledger = path.parent / "delivery.json"
     state = json.loads(ledger.read_text(encoding="utf-8"))
     require(state["delivery"] == "sending", "No ambiguous upload to resolve.")
-    if message_id is None:
+    if received_filename is not None:
+        req = json.loads(path.read_text(encoding="utf-8"))
+        require(Path(req["apkPath"]).name == received_filename, "Received filename differs from the reserved APK.")
+        state.update(delivery="sent", receivedFilename=received_filename, confirmation="recipient-chat")
+    elif message_id is None:
         state["delivery"] = "ready"
     else:
         require(message_id > 0, "Expected the positive ID of the confirmed document message.")
@@ -300,6 +312,7 @@ def main():
     check.add_argument("request", type=Path)
     choice = check.add_mutually_exclusive_group(required=True)
     choice.add_argument("--message-id", type=int)
+    choice.add_argument("--received-filename", help="Exact APK name verified in the recipient's chat history.")
     choice.add_argument("--confirmed-absent", action="store_true")
     args = parser.parse_args()
     with locked(STORE):
@@ -311,7 +324,7 @@ def main():
                 finish(ROOT, args.request, req)
                 print(f"Recorded and delivered Spell {req['versionName']} build {req['versionCode']}.")
             else:
-                resolve(args.request, args.message_id)
+                resolve(args.request, args.message_id, args.received_filename)
 
 
 if __name__ == "__main__":

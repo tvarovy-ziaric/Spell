@@ -77,6 +77,34 @@ class ReleaseTests(unittest.TestCase):
         self.finish()
         self.assertEqual(self.send.call_count, 2)
 
+    def test_recipient_confirms_document_after_lost_receipt(self):
+        self.send.side_effect = TimeoutError("lost receipt")
+        with self.assertRaises(TimeoutError):
+            self.finish()
+        with self.assertRaisesRegex(ValueError, "filename differs"):
+            release.resolve(self.path, None, "other.apk")
+        release.resolve(self.path, None, Path(self.req["apkPath"]).name)
+        self.finish()
+        self.send.assert_called_once()
+
+    def test_windows_transient_lock(self):
+        real_replace = release.os.replace
+        lock_error = PermissionError("temporary read lock")
+        lock_error.winerror = 32
+        dest = self.store / "lock-check"
+        calls = []
+
+        def transient_replace(source, target):
+            calls.append(target)
+            if len(calls) == 1:
+                raise lock_error
+            real_replace(source, target)
+
+        with patch.object(release.os, "replace", side_effect=transient_replace):
+            release.atomic_write(dest, "saved")
+        self.assertEqual(dest.read_text(), "saved")
+        self.assertEqual(len(calls), 2)
+
     def test_publish_failure_still_delivers(self):
         self.publish.side_effect = [OSError("injected outage"), None]
         with self.assertRaisesRegex(RuntimeError, "Telegram delivery confirmed"):
