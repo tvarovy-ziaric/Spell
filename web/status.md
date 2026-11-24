@@ -8,6 +8,6 @@ Dva simulované telefóny sa cez sieť pripojili k duelu. Skúška overila jedno
 
 ## Čo čaká na skúšku
 
-Android klient má pripravenú úvodnú diagnostiku a dva terčíky na vytlačenie. Prvé zostavenie APK čaká na aktiváciu Unity Editora a dokončenie inštalácie podpory Androidu.
+Unity 6000.3.29f1 úspešne otvorilo čistú kópiu projektu Spell s cieľom Android. Editor načítal SDK, NDK r27c a OpenJDK 17. Skúšobná kompilácia prešla pre Android API 36 aj pre natívnu knižnicu ARM64. Prvé APK a skúška na telefónoch sú ešte pred nami.
 
 Kalibráciu pomocou dvoch terčíkov a zhodu polohy virtuálneho objektu treba odmerať na dvoch telefónoch na ihrisku. Hrateľný duel je ďalšou etapou.
