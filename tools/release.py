@@ -113,11 +113,16 @@ def aapt_path():
 
 def inspect_apk(req):
     path = Path(req["apkPath"])
-    output = subprocess.check_output([aapt_path(), "dump", "badging", str(path)], encoding="utf-8", errors="replace")
+    aapt = aapt_path()
+    output = subprocess.check_output([aapt, "dump", "badging", str(path)], encoding="utf-8", errors="replace")
     package = next((line for line in output.splitlines() if line.startswith("package: ")), "")
     metadata = dict(re.findall(r"(\w+)='([^']*)'", package))
     require(metadata.get("name") == PACKAGE and metadata.get("versionName") == req["versionName"] and
             metadata.get("versionCode") == str(req["versionCode"]), "Embedded APK package or version differs from the reservation.")
+    build_tools = Path(shutil.which(aapt) or aapt).parent
+    java_home = os.environ.get("JAVA_HOME")
+    java = str(Path(java_home) / "bin" / ("java.exe" if os.name == "nt" else "java")) if java_home else "java"
+    subprocess.check_output([java, "-jar", str(build_tools / "lib/apksigner.jar"), "verify", str(path)])
     digest = hashlib.sha256()
     with path.open("rb") as f:
         for block in iter(lambda: f.read(1 << 20), b""):

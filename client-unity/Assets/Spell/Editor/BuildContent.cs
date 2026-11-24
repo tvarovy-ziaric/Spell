@@ -43,6 +43,11 @@ namespace Spell.Editor
                 if (!root.Elements("uses-permission").Any(element => (string)element.Attribute(android + "name") == name))
                     root.AddFirst(new XElement("uses-permission", new XAttribute(android + "name", name)));
             document.Save(path);
+            // Compress native libraries in the standalone APK delivered via Telegram.
+            string launcher = Path.Combine(libraryPath, "../launcher/build.gradle");
+            const string packaging = "android.packaging.jniLibs.useLegacyPackaging = true";
+            if (!File.ReadAllText(launcher).Contains(packaging))
+                File.AppendAllText(launcher, "\n" + packaging + "\n");
         }
     }
 }
