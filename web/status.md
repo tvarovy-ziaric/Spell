@@ -6,6 +6,8 @@ Zakladateľ vytvorí hru, druhý hráč naskenuje QR kód. Oba telefóny dostáv
 
 Dva testovacie klienty sa cez verejný server pripojili do rovnakej hry. Po výpadku sa spojenie obnovilo a opakované zoslanie toho istého Fireballu odpočítalo HP iba raz. Lokálne skúšky rozhodcu preverili aj zákryt terénom, auru a hranice ihriska. Na verejnom serveri prešlo uloženie presetov zakladateľa a opätovné doručenie diagnostických udalostí do vlastného PostgreSQL.
 
+Ten istý podpísaný build 5 prešiel párovaním na dvoch emulátoroch Androidu 15. Hosť prečítal QR kód z displeja zakladateľa. Na oboch sa zobrazilo pripravené ihrisko, 100/100 HP a čakanie na kalibráciu. Po ukončení hry dorazila diagnostika z oboch. V aplikácii prešlo aj uloženie pravidiel, výber z histórie a odhlásenie zakladateľa.
+
 ## Grafika a diagnostika
 
 V Unity prešla výmena vykresľovačov Fireballu aj tém terčíkov Inferno a Necro. Pri nedôveryhodnom sledovaní sa dekorácia skryje. Samostatné skúšky overili zameriavač, terénnu sieť, stratu opory, syntetické merania GNSS a prevod výšky do Bpv.
@@ -16,4 +18,4 @@ V Unity prešla výmena vykresľovačov Fireballu aj tém terčíkov Inferno a N
 
 ## Posledné APK
 
-**0.1.1-dev · build 3**. Párovanie zakladateľa a hosťa cez QR kód. Priestorová kalibrácia na ihrisku a hrateľný súboj čakajú na skúšku.
+**0.2.0-dev · build 5**. Pripravená diagnostika pre skúšku na dvoch fyzických telefónoch. Presnosť, odozva na ihrisku a prijatie M2 čakajú na odmeranie a rozhodnutie vlastníka.

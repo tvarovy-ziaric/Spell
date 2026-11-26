@@ -18,6 +18,21 @@ Audit vychádza z posledného vydaného buildu 3 (commit `c65755a`) a z [roadmap
 - **Správa a diagnostika.** Vetva `prep/admin` pridáva oprávnenie chránené Android Keystore, históriu a uzamknutie pravidiel pre duel. Diagnostika má ohraničenú kapacitu, dávkové potvrdenia a testovanú obnovu pri strate spojenia alebo procese ukončenom pred potvrdením. Podrobné polohy sú v distribuovanej konfigurácii vypnuté. [Administrácia](administracia.md) · [Žurnál a retencia](../contracts/diagnostics.md) · [Obnova](obnova-servera.md)
 - **Terén a integrácia.** Vetva `prep/field` dopĺňa tlač, údaje pre testerov a výpočet P95. Koordinátor prepojil mobilnú sieť, merania, žurnál a registrovaný povrch. Každý pokus používa dve zhodné verzie APK. [Návod pre testerov](M2-skuska.md) · [Vyhodnotenie meraní](../qa/field/README.md)
 
+## Výsledky softvérovej skúšky
+
+| Výsledok | Čo sme overili |
+| --- | --- |
+| **PASS** | Dva autentifikované testovacie klienty na verejnom serveri mali po jednom zásahu a jeho opakovaní zhodných 75 HP u zasiahnutého hráča. Po prerušení spojenia nastala pauza, po obnovení klient získal aktuálny stav. |
+| **PASS** | Na verejnom serveri prešiel výber uložených pravidiel zakladateľa a opakované doručenie tej istej diagnostiky. V izolovanej databáze prešla kontrola prístupu, retencie a obnovy štyroch tabuliek zo zálohy. |
+| **PASS** | V Unity prešlo 33 kontrol vizuálnych kontraktov. Nezávislá vykresľovacia skúška porovnala obraz oboch tém terčíkov a oboch kúziel. |
+| **PASS** | Finálny server sa zostavil aj v čistom linuxovom build kontajneri, načítal skúšobné ihrisko a v oddelenom kontajneri vrátil `200 ok` na `/healthz`. |
+| **PASS** | Build 5 je podpísaný rovnakým certifikátom ako build 3. V súbore APK sa zhoduje binárna databáza oboch značiek ARCore, diagnostický povrch aj jeho SHA-256 so zdrojovým repozitárom. |
+| **PASS** | Ten istý build 5 na dvoch emulátoroch Androidu 15 prešiel cez natívny skener QR a WSS na verejný server. Obaja videli načítané ihrisko, 100/100 HP a čakanie na kalibráciu. Na zakladateľovi prešlo prepnutie oboch grafických modulov. Po odchode hosťa zanikla relácia na oboch Androidoch. Oba lokálne žurnály sa vyprázdnili a databáza prijala dve dávky počítadiel aj dve stránky udalostí. Pri prvom pokuse nereagoval náhľad virtuálnej kamery, pri opakovaní prešlo skenovanie s udeleným oprávnením. [Obrazovka zakladateľa](m2-visuals/build5-zakladatel.png) · [Obrazovka hosťa](m2-visuals/build5-host.png) |
+| **PASS** | V nainštalovanom APK zakladateľ odomkol administráciu, uložil predvoľbu so 101 HP, prepol na predvolené pravidlá a znova načítal 101 HP z histórie. Odhlásenie zrušilo oprávnenie aj v databáze. |
+| **PHYSICAL TEST REQUIRED** | Relatívna a absolútna presnosť, stabilita po chôdzi, čitateľnosť témy pri pohybe a meraný výkon duelu čakajú na skutočné Androidy. |
+
+Záverečný beh `qa/check.py` prešiel s 25 kontrolami geometrie, 26 kontrolami kalibrácie a 22 kontrolami smerového pozorovania účastníka. Projekt hostiteľských skúšok pri kompilácii zdieľaných tried žurnálu vypísal deväť upozornení na nulovateľnosť. Testy žurnálu pokryli prázdny aj ukončený stav a opätovné načítanie.
+
 ## Ukážky z vykresľovacej skúšky Unity
 
 Snímky zachytávajú jeden okamih animácie na počítači cez Direct3D. Na telefónoch sa posúdi vzhľad v obraze kamery, plynulosť a správanie pri strate značky.
