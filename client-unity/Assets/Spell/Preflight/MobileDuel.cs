@@ -29,7 +29,8 @@ namespace Spell.Client.Preflight
         bool inBackground, cast;
         ulong lastPose, command, lastImpact;
         long lastSample;
-        double retryAt, nextPing;
+        double retryAt, nextPing, lastReceipt;
+        public bool HasStarted { get; private set; }
         public string Status { get; private set; } = "";
 
         void Start()
@@ -48,6 +49,7 @@ namespace Spell.Client.Preflight
                 StopSocket();
                 seat = next;
                 command = lastImpact = 0;
+                HasStarted = false;
                 retryAt = 0;
             }
             if (surface != online.Arena)
@@ -63,6 +65,7 @@ namespace Spell.Client.Preflight
                 return;
             }
             if (socket.State != WebSocketState.Open) return;
+            if (now - lastReceipt > 20) { StopSocket(); retryAt = now + 1; return; }
             if (sending != null && !sending.IsCompleted) return;
             if (sending != null && sending.IsFaulted) { StopSocket(); retryAt = now + 2; return; }
             var frameSource = device.GetComponent<BoardCalibration>();
@@ -135,6 +138,7 @@ namespace Spell.Client.Preflight
                 run.CancelAfter(TimeSpan.FromSeconds(10));
                 await ws.ConnectAsync(new Uri("wss://spell.arnavigator.site/v1/events"), run.Token);
                 run.CancelAfter(Timeout.Infinite);
+                lastReceipt = Time.realtimeSinceStartupAsDouble;
                 var bytes = new byte[65536];
                 while (!run.IsCancellationRequested)
                 {
@@ -148,6 +152,7 @@ namespace Spell.Client.Preflight
                         total += part.Count;
                     } while (!part.EndOfMessage);
                     if (ws != socket) return;
+                    lastReceipt = Time.realtimeSinceStartupAsDouble;
                     var message = ServerFrame.Parser.ParseFrom(bytes,0,total);
                     if (message.Snapshot != null) Apply(message.Snapshot);
                     if (message.Pong != null)
@@ -165,6 +170,7 @@ namespace Spell.Client.Preflight
         void Apply(Snapshot value)
         {
             snapshot = value;
+            if (value.Phase == Phase.Playing) HasStarted = true;
             double now = Time.realtimeSinceStartupAsDouble;
             var combat = value.Combat;
             Status = value.Phase == Phase.Preparing ? "Herné spojenie pripravené. Čakám na kalibráciu oboch hráčov." :
@@ -199,7 +205,7 @@ namespace Spell.Client.Preflight
             if (sending?.IsFaulted == true) _ = sending.Exception;
             sending = null; ready = null; snapshot = null; cast = false; lastPose = 0; lastSample = 0;
             visuals?.ClearFlights(); visuals?.ClearAim();
-            Status = string.Empty;
+            Status = seat == null ? "" : "Herné spojenie sa obnovuje…";
         }
         void OnApplicationPause(bool paused) { inBackground = paused; if (paused) StopSocket(); }
         void OnDestroy() { if (visuals != null) visuals.CastRequested -= RequestCast; StopSocket(); }

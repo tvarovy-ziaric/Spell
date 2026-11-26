@@ -142,6 +142,8 @@ namespace Spell.Client.Preflight
         string code, hostAttempt, joinAttempt;
         string status = "", connectionNotice = "";
         float nextPoll;
+        long playTerrainBytes;
+        int playTerrainRequests;
         internal string SeatToken => ticket?.seat?.token;
         internal string PresetId => ticket?.preset;
         internal bool IsFounder => IsHost;
@@ -186,6 +188,7 @@ namespace Spell.Client.Preflight
                 if (paired) GUILayout.Label("Obaja hráči sú v hre.", label);
                 var duel = GetComponent<MobileDuel>();
                 if (duel != null && duel.Status.Length > 0) GUILayout.Label(duel.Status, label);
+                if (duel != null && duel.HasStarted) GUILayout.Label($"Terén od štartu: {playTerrainRequests} požiadaviek, {playTerrainBytes} B. Sieť RTT {duel.RoundTripMs:0} ms.", label);
             }
             if (status.Length > 0) GUILayout.Label(status, label);
             if (connectionNotice.Length > 0) GUILayout.Label(connectionNotice, label);
@@ -333,10 +336,12 @@ namespace Spell.Client.Preflight
             var arenaBody = new LimitedBody(GuestInvite.MaxArenaBytes);
             using (var request = Request(ticket.arenaPath, "GET", arenaBody))
             {
+                if (GetComponent<MobileDuel>().HasStarted) playTerrainRequests++;
                 journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainRequest);
                 request.timeout = 40;
                 request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                 yield return request.SendWebRequest();
+                if (GetComponent<MobileDuel>().HasStarted) playTerrainBytes += (long)request.downloadedBytes;
                 journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainBytes, (int)Math.Min((ulong)int.MaxValue, request.downloadedBytes));
                 if (!Success(request, arenaBody, Job.Download)) yield break;
                 try { Arena = ArenaPreflight.Load(arenaBody.Bytes(), ticket.arenaSha256); }
@@ -429,6 +434,7 @@ namespace Spell.Client.Preflight
         void ClearRoom()
         {
             journal.End();
+            playTerrainBytes = playTerrainRequests = 0;
             ClearQr();
             ticket = null;
             Arena = null;
