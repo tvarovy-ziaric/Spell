@@ -19,7 +19,7 @@ namespace Spell.Editor
         public override void PrepareForBuild(BuildPlayerContext context)
         {
             if (context.BuildPlayerOptions.target != BuildTarget.Android) return;
-            foreach (string name in new[] { "ZXing-LICENSE.txt", "ZXing-NOTICE.txt" })
+            foreach (string name in new[] { "ZXing-LICENSE.txt", "ZXing-NOTICE.txt", "Protobuf-LICENSE.txt" })
             {
                 string path = Path.GetFullPath(Path.Combine(Application.dataPath, "../ThirdParty", name));
                 context.AddAdditionalPathToStreamingAssets(path, "legal/" + name);

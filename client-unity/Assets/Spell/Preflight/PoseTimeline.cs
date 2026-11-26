@@ -3,15 +3,16 @@ namespace Spell.Client.Preflight
     // Camera and GNSS retain their original clock values. Visual freshness uses local receipt time.
     public readonly struct PoseTiming
     {
-        public readonly long Sequence, EstimatedUs, LastGnssUs, LastCameraUs;
+        public readonly long Sequence, EstimatedUs, LastGnssUs, LastCameraUs, VisualReceiptUs;
         public readonly bool HasRecentTracking;
 
-        internal PoseTiming(long sequence, long now, long gnss, long frame, bool tracking)
+        internal PoseTiming(long sequence, long now, long gnss, long frame, long receipt, bool tracking)
         {
             Sequence = sequence;
             EstimatedUs = now;
             LastGnssUs = gnss;
             LastCameraUs = frame;
+            VisualReceiptUs = receipt;
             HasRecentTracking = tracking;
         }
     }
@@ -43,7 +44,7 @@ namespace Spell.Client.Preflight
             if (nowUs <= 0 || (sequence > 0 && nowUs - lastPublish < 100_000)) return false;
             lastPublish = nowUs;
             bool recent = tracking && nowUs >= visualReceipt && nowUs - visualReceipt < 800_000;
-            sample = new PoseTiming(++sequence, nowUs, lastFix, cameraFrame, recent);
+            sample = new PoseTiming(++sequence, nowUs, lastFix, cameraFrame, visualReceipt, recent);
             return true;
         }
     }

@@ -32,7 +32,9 @@ string? spellPostgres = adminConfig.Postgres;
 await using var adminDb = string.IsNullOrEmpty(spellPostgres) ? null : Npgsql.NpgsqlDataSource.Create(spellPostgres);
 var admin = adminDb != null && !string.IsNullOrEmpty(adminConfig.PasswordHash)
     ? new AdminStore(adminDb, adminConfig.PasswordHash) : null;
+builder.Services.AddDataProtection();
 var app = builder.Build();
+app.MapDiagnosticBatches(spellPostgres);
 app.UseWebSockets();
 app.UseRateLimiter();
 app.Use(async (ctx, next) =>
@@ -49,6 +51,7 @@ object Describe(Admission player)
 {
     var seat = player.Seat;
     return new { seat, arenaRevision = DuelLobby.ArenaRevision, arenaSha256 = arena.Digest,
+        diagnosticPermit = DiagnosticBatches.Permit(app, spellPostgres, seat.Token),
         preset = player.PresetId, rulesVersion = 1, rules = player.Rules,
         arenaPath = "/v1/arena", socketPath = "/v1/events" };
 }
@@ -115,9 +118,11 @@ app.MapGet("/v1/events", async (HttpContext ctx) =>
     }
     finally { lobby.Disconnect(token, channel); }
 });
+var maintenance = string.IsNullOrWhiteSpace(spellPostgres) ? Task.CompletedTask : DiagnosticBatches.MaintainAsync(spellPostgres, app.Lifetime.ApplicationStopping);
 var ticking = Tick(app.Lifetime.ApplicationStopping);
 await app.RunAsync();
 await ticking;
+try { await maintenance; } catch (OperationCanceledException) when (app.Lifetime.ApplicationStopping.IsCancellationRequested) { }
 
 async Task Tick(CancellationToken stop)
 {

@@ -9,6 +9,7 @@ using Spell.Client.Preflight;
 using Spell.Protocol.V1;
 using Spell.Server;
 
+JournalChecks.Run();
 AdminChecks.Run();
 var folder = args[0];
 PoseReplay.Run(Path.Combine(folder, "timing.csv"));
