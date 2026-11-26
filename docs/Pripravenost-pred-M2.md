@@ -18,6 +18,14 @@ Audit vychádza z posledného vydaného buildu 3 (commit `c65755a`) a z [roadmap
 - **Správa a diagnostika.** Vetva `prep/admin` pridáva oprávnenie chránené Android Keystore, históriu a uzamknutie pravidiel pre duel. Diagnostika má ohraničenú kapacitu, dávkové potvrdenia a testovanú obnovu pri strate spojenia alebo procese ukončenom pred potvrdením. Podrobné polohy sú v distribuovanej konfigurácii vypnuté. [Administrácia](administracia.md) · [Žurnál a retencia](../contracts/diagnostics.md) · [Obnova](obnova-servera.md)
 - **Terén a integrácia.** Vetva `prep/field` dopĺňa tlač, údaje pre testerov a výpočet P95. Koordinátor prepojil mobilnú sieť, merania, žurnál a registrovaný povrch. Každý pokus používa dve zhodné verzie APK. [Návod pre testerov](M2-skuska.md) · [Vyhodnotenie meraní](../qa/field/README.md)
 
+## Ukážky z vykresľovacej skúšky Unity
+
+Snímky zachytávajú jeden okamih animácie na počítači cez Direct3D. Na telefónoch sa posúdi vzhľad v obraze kamery, plynulosť a správanie pri strate značky.
+
+| Inferno | Necro | Fireball Ember | Fireball Rune |
+| --- | --- | --- | --- |
+| ![Magická fakľa](m2-visuals/inferno.png) | ![Lebka so zeleným plameňom](m2-visuals/necro.png) | ![Ohnivá guľa](m2-visuals/ember.png) | ![Runové kúzlo](m2-visuals/rune.png) |
+
 ## Skutočné ihrisko
 
 Na fyzickú skúšku absolútnej polohy treba schválený výrez DMR5 a súradnice terčíkov i nezávislých kontrolných bodov. Nástroj `terrain/arena.py dmr` číta iba zvolené okno zdrojového rastra. Lokálny operátor môže pri spustení servera pridať `--survey <súkromný súbor JSON>`. Súbor má `version: 1`, `arenaSha256` a dve trojice `boardA`, `boardB` v poradí východný posun od začiatku mriežky, výška stredu v Bpv, severný posun. Server overí revíziu, hash, hranice a rozostup pred otvorením relácie. Oba telefóny dostanú zhodné súradnice s lístkom hry. Pri zmene rozostavenia sa prepočíta spoločný rámec existujúcim kalibračným postupom. Skúšobný syntetický profil má rozostup 1,50 m.
