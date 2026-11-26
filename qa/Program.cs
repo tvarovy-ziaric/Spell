@@ -17,6 +17,7 @@ var digest = File.ReadAllText(Path.Combine(folder, "hill.sha256")).Trim();
 var surface = ArenaPreflight.Load(bytes, digest);
 var serverArena = new ArenaPackage(bytes, digest);
 LobbyChecks.Run(serverArena);
+CombatChecks.Run(serverArena);
 Assert(surface.TryHeight(3, 3, out var elevation) && elevation == 106 &&
        serverArena.Surface.TryHeight(3, 3, out var serverHeight) && elevation == serverHeight, "shared summit");
 Assert(!surface.TryHeight(0, 0, out _), "fixture NoData");
@@ -120,6 +121,29 @@ await Send(rejoined, new() { Ready = ready });
 await Send(rejoined, new() { Pose = Pose(1) });
 await Until(rejoined, s => s.Phase == Phase.Playing);
 await Until(rejoined, s => s.Phase == Phase.Paused);
+// The same WSS connection upgrades from the v1 readiness-only path to explicit combat v1.
+var combatReady = ready.Clone();
+combatReady.CombatVersion = 1;
+var caster = Pose(5);
+caster.Position = new Vector3M { East = 1, North = 3, Up = 105 };
+caster.Orientation = new Orientation { Y = Math.Sqrt(.5), W = Math.Sqrt(.5) };
+caster.PositionSigmaM = .01;
+var receiver = Pose(2);
+receiver.Position = new Vector3M { East = 2.45, North = 3, Up = 105.1 };
+receiver.PositionSigmaM = .01;
+await Send(a, new() { Ready = combatReady });
+await Send(rejoined, new() { Ready = combatReady });
+await Send(a, new() { Pose = caster });
+await Send(rejoined, new() { Pose = receiver });
+await Until(a, s => s.Phase == Phase.Playing && s.Combat?.Version == 1);
+var command = new ClientFrame { Cast = new CastFireball { CommandId = 1, PoseSequence = caster.Sequence } };
+await Send(a, command);
+await Send(a, command);
+var aImpact = await Until(a, s => s.Combat?.Impacts.Count == 1);
+var bImpact = await Until(rejoined, s => s.Combat?.Impacts.Count == 1);
+Assert(aImpact.Revision == bImpact.Revision && aImpact.Combat.Equals(bImpact.Combat) &&
+    aImpact.Combat.Impacts[0].Result == "hit" && aImpact.Combat.GuestHp == 75, "one shared wire impact");
+Console.WriteLine("PASS two live WebSockets, explicit combat negotiation, duplicated cast, identical authoritative impact and HP");
 using var closed = await http.DeleteAsync("v1/session", ct);
 Assert(closed.StatusCode == HttpStatusCode.NoContent, "guest can leave and end the duel");
 using var ended = await http.GetAsync("v1/session", ct);
