@@ -27,7 +27,14 @@ builder.Services.AddRateLimiter(options =>
             _ => new FixedWindowRateLimiterOptions { PermitLimit = 10, Window = TimeSpan.FromMinutes(1) });
     });
 });
+var adminConfig = AdminConfig.Load();
+string? spellPostgres = adminConfig.Postgres;
+await using var adminDb = string.IsNullOrEmpty(spellPostgres) ? null : Npgsql.NpgsqlDataSource.Create(spellPostgres);
+var admin = adminDb != null && !string.IsNullOrEmpty(adminConfig.PasswordHash)
+    ? new AdminStore(adminDb, adminConfig.PasswordHash) : null;
+builder.Services.AddDataProtection();
 var app = builder.Build();
+app.MapDiagnosticBatches(spellPostgres);
 app.UseWebSockets();
 app.UseRateLimiter();
 app.Use(async (ctx, next) =>
@@ -40,8 +47,14 @@ string Bearer(HttpContext ctx)
     var header = ctx.Request.Headers.Authorization.ToString();
     return header.StartsWith("Bearer ", StringComparison.Ordinal) ? header[7..] : "";
 }
-object Describe(Seat seat) => new { seat, arenaRevision = DuelLobby.ArenaRevision, arenaSha256 = arena.Digest,
-    preset = DuelLobby.Preset, arenaPath = "/v1/arena", socketPath = "/v1/events" };
+object Describe(Admission player)
+{
+    var seat = player.Seat;
+    return new { seat, arenaRevision = DuelLobby.ArenaRevision, arenaSha256 = arena.Digest,
+        diagnosticPermit = DiagnosticBatches.Permit(app, spellPostgres, seat.Token),
+        preset = player.PresetId, rulesVersion = 1, rules = player.Rules,
+        arenaPath = "/v1/arena", socketPath = "/v1/events" };
+}
 object DescribeInvite(Invitation invite)
 {
     var payload = "spell://join/v1/" + invite.Code;
@@ -50,13 +63,33 @@ object DescribeInvite(Invitation invite)
     return new { payload, invite.ExpiresAt, qrPngBase64 = Convert.ToBase64String(qr.GetGraphic(4)) };
 }
 app.MapGet("/healthz", () => Results.Text("ok"));
-var createRoute = app.MapPost("/v1/session", (HttpContext ctx) =>
+app.Use(async (ctx, next) =>
+{
+    bool usesAdmin = ctx.Request.Path.StartsWithSegments("/v1/admin") ||
+        (ctx.Request.Path == "/v1/session" && ctx.Request.Headers.ContainsKey("Spell-Preset"));
+    if (!usesAdmin || admin == null) { await next(); return; }
+    try { await admin.Initialize(); await next(); }
+    catch (Npgsql.NpgsqlException) when (!ctx.Response.HasStarted) { ctx.Response.StatusCode = 503; }
+});
+app.MapFounderAdmin(admin, Bearer);
+var createRoute = app.MapPost("/v1/session", async (HttpContext ctx) =>
 {
     if (!playerHosting && Bearer(ctx) != founderKey) return Results.Unauthorized();
     var key = ctx.Request.Headers["Idempotency-Key"].ToString();
     if (playerHosting && !Guid.TryParseExact(key, "N", out _)) return Results.BadRequest();
-    var session = sessions.Create(key.Length == 0 ? null : key);
-    return session is { } s ? Results.Ok(new { player = Describe(s.Seat), invitation = DescribeInvite(s.Invitation) })
+    var id = ctx.Request.Headers["Spell-Preset"].ToString();
+    SavedPreset? selected = null;
+    byte[]? owner = null;
+    if (!string.IsNullOrEmpty(id))
+    {
+        if (admin == null) return Results.StatusCode(503);
+        owner = await admin.Owner(ctx.Request.Headers["Spell-Grant"].ToString());
+        if (owner == null) return Results.Unauthorized();
+        selected = await admin.ById(owner, id);
+        if (selected == null) return Results.NotFound();
+    }
+    var session = sessions.Create(key.Length == 0 ? null : key, selected, owner);
+    return session is { } s ? Results.Ok(new { player = Describe(s.Player), invitation = DescribeInvite(s.Invitation) })
         : Results.Conflict();
 });
 if (playerHosting) createRoute.RequireRateLimiting("player-create");
@@ -85,9 +118,11 @@ app.MapGet("/v1/events", async (HttpContext ctx) =>
     }
     finally { lobby.Disconnect(token, channel); }
 });
+var maintenance = string.IsNullOrWhiteSpace(spellPostgres) ? Task.CompletedTask : DiagnosticBatches.MaintainAsync(spellPostgres, app.Lifetime.ApplicationStopping);
 var ticking = Tick(app.Lifetime.ApplicationStopping);
 await app.RunAsync();
 await ticking;
+try { await maintenance; } catch (OperationCanceledException) when (app.Lifetime.ApplicationStopping.IsCancellationRequested) { }
 
 async Task Tick(CancellationToken stop)
 {

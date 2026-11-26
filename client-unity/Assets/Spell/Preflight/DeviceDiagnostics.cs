@@ -154,7 +154,9 @@ namespace Spell.Client.Preflight
                 thermalCheckAt=Time.unscaledTimeAsDouble+5;
                 using var player=new AndroidJavaClass("com.unity3d.player.UnityPlayer");
                 using var activity=player.GetStatic<AndroidJavaObject>("currentActivity");
-                GetComponent<Spell.Client.Visuals.DuelVisuals>()?.ApplyThermalStatus(gnss.CallStatic<int>("thermalStatus",activity));
+                int thermal = gnss.CallStatic<int>("thermalStatus",activity);
+                GetComponent<Spell.Client.Visuals.DuelVisuals>()?.ApplyThermalStatus(thermal);
+                sink?.Record(Spell.Client.Diagnostics.Measure.Thermal, thermal);
             }
             if (paused) gnss.CallStatic("stop");
             else
