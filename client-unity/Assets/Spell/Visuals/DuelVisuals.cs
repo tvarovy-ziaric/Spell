@@ -21,7 +21,9 @@ namespace Spell.Client.Visuals
         readonly List<ulong> expired = new List<ulong>();
         public event Action CastRequested;
         VisualBudget budget;
-        bool necro, rune, trajectory, cameraOpen, haveAim, terrainHit;
+        bool trajectory, cameraOpen, haveAim, terrainHit;
+        VisualModule<IMarkerVisualTheme> markerModule=VisualModules.InfernoTheme;
+        VisualModule<IFireballRenderer> fireballModule=VisualModules.Ember;
         int profile;
         MarkerPresentation markers;
         VisualArt guide;
@@ -129,14 +131,23 @@ namespace Spell.Client.Visuals
         }
 
         public void SetCameraOpen(bool visible) => cameraOpen=visible;
-        public void SelectRune(bool next)
+        public void SelectFireball(VisualModule<IFireballRenderer> next)
         {
-            if (rune == next) return;
-            rune=next;
+            if (next == null) throw new ArgumentNullException(nameof(next));
+            next.Validate();
+            if (fireballModule == next) return;
+            fireballModule=next;
             ReplaceFlightStyle();
         }
-        IMarkerVisualTheme NewTheme() => necro ? (IMarkerVisualTheme)new Necro(budget) : new Inferno(budget);
-        void ReplaceMarkerTheme() => markers?.Select(NewTheme());
+        public void SelectMarkers(VisualModule<IMarkerVisualTheme> next)
+        {
+            if (next == null) throw new ArgumentNullException(nameof(next));
+            next.Validate();
+            if (next == markerModule) return;
+            markers?.Select(next.Create(budget));
+            markerModule=next;
+        }
+        void ReplaceMarkerTheme() => markers?.Select(markerModule.Create(budget));
         void ReplaceFlightStyle()
         {
             foreach (Flight flight in flights.Values)
@@ -149,7 +160,7 @@ namespace Spell.Client.Visuals
         void LateUpdate()
         {
             if (markers == null && TryGetComponent(out BoardCalibration boards))
-                markers = new MarkerPresentation(boards,NewTheme());
+                markers = new MarkerPresentation(boards,markerModule.Create(budget));
             markers?.Draw(Time.unscaledTime);
             DrawFlights(Time.realtimeSinceStartupAsDouble);
             DrawGuide();
@@ -164,7 +175,7 @@ namespace Spell.Client.Visuals
                 if (now > f.To) { expired.Add(row.Key); continue; }
                 if (!cameraOpen || now < f.From) { f.View?.Hide(); continue; }
                 float alpha = f.To == f.From ? 1 : Mathf.Clamp01((float)((now-f.From)/(f.To-f.From)));
-                f.View ??= rune ? (IFireballRenderer)new RuneFireball(budget) : new EmberFireball(budget);
+                f.View ??= fireballModule.Create(budget);
                 var heading = f.End-f.Start;
                 f.View.Present(Vector3.Lerp(f.Start,f.End,alpha),heading.sqrMagnitude>1e-10f ? heading.normalized : Vector3.forward,
                     (float)(now-f.From),f.Impact ? alpha : -1);
@@ -201,10 +212,10 @@ namespace Spell.Client.Visuals
 
         public void DrawSettings()
         {
-            if (GUILayout.Button("Terčíky · "+(necro?"Necro":"Inferno"),GUILayout.MinHeight(44)))
-            { necro=!necro; ReplaceMarkerTheme(); }
-            if (GUILayout.Button("Fireball · "+(rune?"Rune":"Ember"),GUILayout.MinHeight(44)))
-                SelectRune(!rune);
+            if (GUILayout.Button("Terčíky · "+markerModule.Name,GUILayout.MinHeight(44)))
+                SelectMarkers(markerModule==VisualModules.InfernoTheme ? VisualModules.NecroTheme : VisualModules.InfernoTheme);
+            if (GUILayout.Button("Fireball · "+fireballModule.Name,GUILayout.MinHeight(44)))
+                SelectFireball(fireballModule==VisualModules.Ember ? VisualModules.Rune : VisualModules.Ember);
             string name=profile==0?"Automaticky":profile==1?"Úsporný":"Plynulý";
             if (GUILayout.Button($"Grafika · {name} ({FrameLimit} FPS)",GUILayout.MinHeight(44))) ApplyProfile((profile+1)%3);
             if (heatLimited) GUILayout.Label("Telefón sa zahrieva. Grafika beží v úspornom režime.");

@@ -84,7 +84,13 @@ namespace Spell.Editor
                 view.DrawFlights(21);
                 var ember=GameObject.Find("Fireball · Ember");
                 Check(ember && Close(ember.transform.position,new Vector3(2,0,0)),"Ember replay midpoint");
-                view.SelectRune(true); view.DrawFlights(21);
+                try
+                {
+                    view.SelectFireball(new VisualModule<IFireballRenderer>("v2",2,_ => throw new Exception("incompatible factory invoked")));
+                    throw new Exception("future renderer contract accepted");
+                }
+                catch (ArgumentException) { Check(true,"future Fireball contract rejected before factory invocation"); }
+                view.SelectFireball(VisualModules.Rune); view.DrawFlights(21);
                 var rune=GameObject.Find("Fireball · Rune");
                 Check(!ember && rune && Close(rune.transform.position,new Vector3(2,0,0)) && rune.transform.Find("Orbiting facet"),"Rune exact same replay");
                 view.ConfirmImpact(14,Vector3.right*4,22);
