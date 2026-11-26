@@ -84,7 +84,13 @@ namespace Spell.Editor
                 view.DrawFlights(21);
                 var ember=GameObject.Find("Fireball · Ember");
                 Check(ember && Close(ember.transform.position,new Vector3(2,0,0)),"Ember replay midpoint");
-                view.SelectRune(true); view.DrawFlights(21);
+                try
+                {
+                    view.SelectFireball(new VisualModule<IFireballRenderer>("v2",2,_ => throw new Exception("incompatible factory invoked")));
+                    throw new Exception("future renderer contract accepted");
+                }
+                catch (ArgumentException) { Check(true,"future Fireball contract rejected before factory invocation"); }
+                view.SelectFireball(VisualModules.Rune); view.DrawFlights(21);
                 var rune=GameObject.Find("Fireball · Rune");
                 Check(!ember && rune && Close(rune.transform.position,new Vector3(2,0,0)) && rune.transform.Find("Orbiting facet"),"Rune exact same replay");
                 view.ConfirmImpact(14,Vector3.right*4,22);
@@ -110,9 +116,27 @@ namespace Spell.Editor
             var dir=Path.GetFullPath(Path.Combine(Application.dataPath,"../../contracts/fixtures"));
             var arena=ArenaSurface.Load(File.ReadAllBytes(Path.Combine(dir,"hill.bytes")),File.ReadAllText(Path.Combine(dir,"hill.sha256")).Trim());
             var projection=ArenaRegistration.ForArena(arena);
+            var mesh = new Mesh();
+            try
+            {
+                Vector3 zero=TerrainDebugPatch.Bake(arena,2,2,mesh);
+                var indices=mesh.GetIndices(0);
+                Check(mesh.vertexCount==49 && indices.Length>0 && Array.IndexOf(indices,0)<0,"mesh uses 7x7 RAM grid and omits NoData triangles");
+                Check(Close(zero+mesh.vertices[24],new Vector3(3,106,3)),"debug mesh reproduces the fixture summit");
+                using var patch=new TerrainDebugPatch();
+                MarkerCalibration.Fit(new MarkerPoint(0,V3.Zero),new MarkerPoint(1,V3.UnitX*1.5f),
+                    new MarkerPoint(0,V3.Zero),new MarkerPoint(1,V3.UnitX*1.5f),-V3.UnitY,1,.12f,out var syntheticFrame);
+                patch.Update(arena,projection,syntheticFrame,Vector3.zero);
+                Check(GameObject.Find("Mriežka výšok ihriska"),"trustworthy frame shows exact surface");
+                patch.Update(arena,projection,null,Vector3.zero);
+                Check(!GameObject.Find("Mriežka výšok ihriska"),"lost registration immediately hides debug terrain");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(mesh); }
             Check(projection!=null && ArenaRegistration.FromSurvey(arena,new ArenaRegistration.Survey{version=2})==null,"fail closed on unsupported survey");
             var testSurvey=new ArenaRegistration.Survey{version=1,arenaSha256=arena.Sha256,boardA=new[]{2f,102,2},boardB=new[]{2f,102,3.5f}};
             var rotated=ArenaRegistration.FromSurvey(arena,testSurvey);
+            var sloped=ArenaRegistration.FromSurvey(arena,new ArenaRegistration.Survey { version=1,arenaSha256=arena.Sha256,boardA=new[]{1f,105,2},boardB=new[]{5f,106,2} });
+            Check(sloped!=null && sloped.BoardBLocal.X==4f && sloped.BoardBLocal.Y==1f,"survey uses measured span and elevation difference");
             testSurvey.arenaSha256="wrong";
             Check(rotated!=null && ArenaRegistration.FromSurvey(arena,testSurvey)==null,"survey identity bound to exact package");
             testSurvey.arenaSha256=arena.Sha256; testSurvey.boardB=testSurvey.boardA;

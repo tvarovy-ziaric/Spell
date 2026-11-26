@@ -54,6 +54,13 @@ internal static class CalibrationChecks
         Check(Rejected(a, b, Vector3.Zero, CalibrationStatus.InvalidInput), "missing gravity");
         Check(Rejected(a, new MarkerPoint(b.Id, new Vector3(float.NaN, 2, 3)), down, CalibrationStatus.InvalidInput),
               "nonfinite centre");
+        Check(Spell.Client.Preflight.FieldReadout.Format(null, Vector3.Zero).Contains("nedostupný"),
+            "lost calibration suppresses stale numeric field readout");
+        MarkerCalibration.Fit(a, b, a, b, down, 1, .1f, out var identity);
+        Check(Spell.Client.Preflight.FieldReadout.Format(identity, new Vector3(1, 2, 3)).Contains("1.000, 2.000, 3.000"),
+            "field readout uses marker coordinates and invariant metres");
+        Check(Spell.Client.Preflight.FieldReadout.Format(identity, new Vector3(float.NaN, 2, 3)).Contains("nedostupná"),
+            "invalid camera sample has no numeric readout");
         Console.WriteLine($"{count} marker calibration checks passed.");
         return count;
     }

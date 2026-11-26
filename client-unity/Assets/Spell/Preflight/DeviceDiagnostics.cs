@@ -28,6 +28,7 @@ namespace Spell.Client.Preflight
         public Pose ViewPose => new Pose(view.transform.position, view.transform.rotation);
         GameObject trackingOrigin;
         BoardCalibration boards;
+        public BoardCalibration Boards => boards;
         ARCameraManager cameraManager;
         Spell.Client.Diagnostics.IMeasurementSink sink;
         long lastImageNs;
@@ -208,6 +209,8 @@ namespace Spell.Client.Preflight
             if (Time.unscaledTimeAsDouble < nextDisplay) return;
             nextDisplay = Time.unscaledTimeAsDouble + 0.25;
             string gps = gnss.CallStatic<string>("status");
+            if (showFieldFixes)
+                for (int i = 0; i < 2; i++) fieldFixes[i] = gnss.CallStatic<string>("readField", i) ?? "";
             if (hardware == null)
             {
                 using var player = new AndroidJavaClass("com.unity3d.player.UnityPlayer");
@@ -219,6 +222,33 @@ namespace Spell.Client.Preflight
             string pose = view.transform.localPosition.ToString("F2");
             string support = timing.HasRecentTracking ? "čerstvé" : "neisté";
             Status = $"ARCore: {ARSession.state}\nSnímky kamery: {frameCount}\n{hardware}\nHĺbka: {depth}\nLokálna poloha (m): {pose}\n{gps}\nOdhady: {timing.Sequence}, sledovanie {support}.\n{boards.Status}";
+            var world = view.transform.position;
+            bool usable = boards.TryGetSharedFrame(out var fieldFrame) && timing.HasRecentTracking;
+            Status += "\n" + FieldReadout.Format(usable ? fieldFrame : null,
+                new System.Numerics.Vector3(world.x, world.y, world.z));
+#endif
+        }
+
+        bool showFieldFixes;
+        readonly string[] fieldFixes = { "", "" };
+        public void DrawFieldFixes(GUIStyle label)
+        {
+#if UNITY_ANDROID && !UNITY_EDITOR
+            if (!Running || gnss == null) return;
+            showFieldFixes = GUILayout.Toggle(showFieldFixes, "M2 · súkromné meranie GNSS pri terčíkoch");
+            if (!showFieldFixes) return;
+            GUILayout.Label("Prilož telefón k stredu vybraného terčíka. Zapíš posun antény. Súradnice ostávajú v pamäti zariadenia.", label);
+            for (int i = 0; i < 2; i++)
+            {
+                if (GUILayout.Button("Zmerať pri terčíku " + (i == 0 ? "A" : "B"), GUILayout.MinHeight(44)))
+                    gnss.CallStatic("armField", i);
+                if (fieldFixes[i].Length > 0) GUILayout.Label(fieldFixes[i], label);
+            }
+            if (GUILayout.Button("Vymazať obe merania", GUILayout.MinHeight(44)))
+            {
+                gnss.CallStatic("clearField");
+                fieldFixes[0] = fieldFixes[1] = "";
+            }
 #endif
         }
 

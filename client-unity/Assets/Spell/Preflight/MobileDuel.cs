@@ -27,7 +27,13 @@ namespace Spell.Client.Preflight
         ArenaSurface surface;
         bool? ready;
         bool inBackground, cast;
-        ulong lastPose, command, lastImpact;
+        ulong lastPose, command;
+        readonly System.Collections.Generic.HashSet<ulong> recentImpacts = new System.Collections.Generic.HashSet<ulong>();
+        readonly System.Collections.Generic.Queue<ulong> impactOrder = new System.Collections.Generic.Queue<ulong>();
+        DiagnosticsUpload journal;
+        int lastTracking = -1, lastModules = -1, lastPhase = -1, lastHpA = -1, lastHpB = -1;
+        ulong loggedImpact;
+        double nextPrecisionSample;
         long lastSample;
         double retryAt, nextPing, lastReceipt;
         public bool HasStarted { get; private set; }
@@ -36,6 +42,7 @@ namespace Spell.Client.Preflight
         void Start()
         {
             online = GetComponent<OnlineArenaDownload>();
+            journal = GetComponent<DiagnosticsUpload>();
             device = GetComponent<DeviceDiagnostics>();
             visuals = GetComponent<DuelVisuals>();
             visuals.CastRequested += RequestCast;
@@ -48,17 +55,25 @@ namespace Spell.Client.Preflight
             {
                 StopSocket();
                 seat = next;
-                command = lastImpact = 0;
+                command = 0;
+                recentImpacts.Clear(); impactOrder.Clear();
+                loggedImpact = 0;
+                lastTracking = lastModules = lastPhase = lastHpA = lastHpB = -1;
+                nextPrecisionSample = 0;
                 HasStarted = false;
                 retryAt = 0;
             }
             if (surface != online.Arena)
             {
                 surface = online.Arena;
-                registration = surface == null ? null : ArenaRegistration.ForArena(surface);
+                registration = online.Registration;
             }
             if (seat == null || inBackground) return;
             double now = Time.realtimeSinceStartupAsDouble;
+            int tracking = device.Timing.HasRecentTracking ? 1 : 0;
+            if (tracking != lastTracking) { journal?.Events?.Event(PilotEvent.Tracking, tracking); lastTracking = tracking; }
+            int styles = (visuals.MarkerThemeName == "Necro" ? 2 : 0) | (visuals.FireballStyleName == "Rune" ? 1 : 0);
+            if (lastModules != styles) { journal?.Events?.Event(PilotEvent.Modules, styles, visuals.FrameLimit); lastModules = styles; }
             if (socket == null)
             {
                 if (now >= retryAt) Connect();
@@ -79,6 +94,7 @@ namespace Spell.Client.Preflight
             if (ready != calibrated)
             {
                 ready = calibrated;
+                journal?.Events?.Event(PilotEvent.Calibration, calibrated ? 1 : 0);
                 Send(new ClientFrame { Ready = new Ready { LoadedInRam = true, Calibrated = calibrated,
                     CombatVersion = 1, ArenaRevision = 1, ArenaSha256 = surface.Sha256, Preset = online.PresetId } });
                 return;
@@ -90,6 +106,7 @@ namespace Spell.Client.Preflight
                     !snapshot.Combat.Finished)
                 {
                     Send(new ClientFrame { Cast = new CastFireball { CommandId = ++command, PoseSequence = lastPose } });
+                    journal?.Events?.Event(PilotEvent.Cast, (int)Math.Min((ulong)int.MaxValue, command));
                     return;
                 }
             }
@@ -112,7 +129,8 @@ namespace Spell.Client.Preflight
             var pose = new PoseSample { Sequence = ++lastPose, ArenaRevision = 1, EstimatedUs = timing.EstimatedUs,
                 LastVisualUs = timing.VisualReceiptUs, Position = new Vector3M { East=pt.x, Up=pt.y, North=pt.z },
                 Orientation = new Orientation { X=rotation.x,Y=rotation.y,Z=rotation.z,W=rotation.w },
-                Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, 1.5)*180/Math.PI };
+                Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, registration.BoardBLocal.X)*180/Math.PI };
+            if (now >= nextPrecisionSample) { journal?.Pose(pt.x, pt.y, pt.z, residual); nextPrecisionSample = now + 1; }
             if (timing.LastGnssUs > 0) pose.LastGnssUs = timing.LastGnssUs;
             Send(new ClientFrame { Pose = pose });
         }
@@ -133,11 +151,12 @@ namespace Spell.Client.Preflight
             lifetime = run;
             try
             {
-                Status = "Pripájam herné spojenie…";
+                Status = "PripĂˇjam hernĂ© spojenieâ€¦";
                 ws.Options.SetRequestHeader("Authorization", "Bearer " + seat);
                 run.CancelAfter(TimeSpan.FromSeconds(10));
                 await ws.ConnectAsync(new Uri("wss://spell.arnavigator.site/v1/events"), run.Token);
                 run.CancelAfter(Timeout.Infinite);
+                journal?.Events?.Event(PilotEvent.Connection, 1);
                 lastReceipt = Time.realtimeSinceStartupAsDouble;
                 var bytes = new byte[65536];
                 while (!run.IsCancellationRequested)
@@ -170,15 +189,39 @@ namespace Spell.Client.Preflight
         void Apply(Snapshot value)
         {
             snapshot = value;
+            if (lastPhase != (int)value.Phase)
+            {
+                lastPhase = (int)value.Phase;
+                journal?.Events?.Event(PilotEvent.Phase, lastPhase);
+            }
+            if (value.Combat?.Version == 1)
+            {
+                if (lastHpA != value.Combat.FounderHp || lastHpB != value.Combat.GuestHp)
+                {
+                    lastHpA = value.Combat.FounderHp; lastHpB = value.Combat.GuestHp;
+                    journal?.Events?.Event(PilotEvent.Health, lastHpA, lastHpB);
+                }
+                foreach (var hit in value.Combat.Impacts)
+                    if (hit.Id > loggedImpact)
+                    {
+                        loggedImpact = hit.Id;
+                        journal?.Events?.Event(PilotEvent.Impact, (int)Math.Min((ulong)int.MaxValue, hit.Id));
+                    }
+            }
             if (value.Phase == Phase.Playing) HasStarted = true;
             double now = Time.realtimeSinceStartupAsDouble;
             var combat = value.Combat;
-            Status = value.Phase == Phase.Preparing ? "Herné spojenie pripravené. Čakám na kalibráciu oboch hráčov." :
-                value.Phase == Phase.Paused ? "Súboj pozastavený." : "Súboj prebieha.";
+            Status = value.Phase == Phase.Preparing ? "HernĂ© spojenie pripravenĂ©. ÄŚakĂˇm na kalibrĂˇciu oboch hrĂˇÄŤov." :
+                value.Phase == Phase.Paused ? "SĂşboj pozastavenĂ˝." : "SĂşboj prebieha.";
             if (combat == null || combat.Version != 1) { visuals.ClearFlights(); return; }
             command = Math.Max(command, online.IsFounder ? combat.FounderCommand : combat.GuestCommand);
-            Status += $" HP {combat.FounderHp} / {combat.GuestHp}. Aura: {combat.Safety}.";
-            if (combat.Finished) Status = $"Súboj sa skončil. HP {combat.FounderHp} / {combat.GuestHp}.";
+            Status += $" HP {combat.FounderHp} / {combat.GuestHp}.";
+            Status += combat.Safety switch {
+                "warning" or "uncertain" or "collision" => " Ste prĂ­liĹˇ blĂ­zko. Zastavte sa a zvĂ¤ÄŤĹˇite odstup.",
+                "boundary" => " VrĂˇĹĄ sa do hranĂ­c ihriska.",
+                "tracking" => " Zameraj znova terÄŤĂ­ky.",
+                "mixed-version" => " Obaja potrebujete rovnakĂş podporovanĂş verziu.", _ => "" };
+            if (combat.Finished) Status = $"SĂşboj sa skonÄŤil. HP {combat.FounderHp} / {combat.GuestHp}.";
             var boards = GetComponent<BoardCalibration>();
             if (registration == null || boards == null || !boards.TryGetSharedFrame(out var frame) || value.Phase != Phase.Playing)
             { visuals.ClearFlights(); return; }
@@ -190,14 +233,16 @@ namespace Spell.Client.Preflight
             }
             foreach (var impact in combat.Impacts)
             {
-                if (impact.Id <= lastImpact) continue;
+                if (!recentImpacts.Add(impact.Id)) continue;
+                impactOrder.Enqueue(impact.Id);
+                if (impactOrder.Count > 32) recentImpacts.Remove(impactOrder.Dequeue());
                 if (combat.GameUs - impact.GameUs <= 300000) visuals.ConfirmImpact(impact.Id,ToView(impact.Position),now);
-                lastImpact = Math.Max(lastImpact,impact.Id);
             }
         }
         void StopSocket()
         {
             var old = socket;
+            if (old != null) journal?.Events?.Event(PilotEvent.Connection, 0);
             socket = null;
             lifetime?.Cancel();
             lifetime = null;
@@ -205,7 +250,7 @@ namespace Spell.Client.Preflight
             if (sending?.IsFaulted == true) _ = sending.Exception;
             sending = null; ready = null; snapshot = null; cast = false; lastPose = 0; lastSample = 0;
             visuals?.ClearFlights(); visuals?.ClearAim();
-            Status = seat == null ? "" : "Herné spojenie sa obnovuje…";
+            Status = seat == null ? "" : "HernĂ© spojenie sa obnovujeâ€¦";
         }
         void OnApplicationPause(bool paused) { inBackground = paused; if (paused) StopSocket(); }
         void OnDestroy() { if (visuals != null) visuals.CastRequested -= RequestCast; StopSocket(); }
