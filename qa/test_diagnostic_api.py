@@ -81,3 +81,14 @@ if __name__ == "__main__":
             f"SELECT count(*) FROM spell_diagnostic_events WHERE seat_hash='{synthetic}'"], text=True)
         assert count(args.container, synthetic) == 0 and children.strip() == "0"
     print("PASS seven-day server retention removes counters and event pages after restart")
+    # Explicit synthetic-only mode in this private loopback process. Production settings are untouched.
+    with server(args.config.resolve(), "--approved-diagnostic-poses", "true") as base:
+        seat = call(base, "POST", "session", headers={"Idempotency-Key": uuid.uuid4().hex})["player"]
+        token = seat["seat"]["token"]
+        call(base, "DELETE", "session", token=token, code=204)
+        permit = seat["diagnosticPermit"]
+        call(base, "POST", "diagnostics/batch", token=permit, code=204, body=dict(version=1, estimates=1,
+             sentPoses=1, gnssFixes=0, visualFrames=1, terrainBytes=0, terrainRequests=0, peakThermalStatus=-1))
+        call(base, "POST", "diagnostics/events", token=permit, code=204, body=dict(version=1, pageNumber=0,
+             pages=1, dropped=0, events=[dict(ms=20, kind=9, value=25, detail=0, eastCm=125, upCm=250, northCm=-300)]))
+    print("PASS explicitly enabled synthetic pose path on a private loopback server")
