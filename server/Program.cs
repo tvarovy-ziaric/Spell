@@ -91,7 +91,7 @@ await ticking;
 
 async Task Tick(CancellationToken stop)
 {
-    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(100));
+    using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(50));
     try { while (await timer.WaitForNextTickAsync(stop)) sessions.Tick(); }
     catch (OperationCanceledException) when (stop.IsCancellationRequested) { }
 }
