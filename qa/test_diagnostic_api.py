@@ -38,7 +38,25 @@ def exercise(base, container):
     call(base, "POST", path, token=permit, body=counters, code=204)
     call(base, "POST", path, token=permit, body=dict(counters, gnssFixes=3), code=409)
     assert count(container, digest) == 1
-    print("PASS diagnostic API version, credentials, offline receipt, duplicate and conflict; exactly one PostgreSQL row")
+    item = dict(ms=10, kind=5, value=100, detail=90, eastCm=0, upCm=0, northCm=0)
+    first = dict(version=1, pageNumber=0, pages=2, dropped=0, events=[item]*12)
+    second = dict(first, pageNumber=1, events=[dict(item, ms=20)])
+    path = "diagnostics/events"
+    call(base, "POST", path, token=token, body=first, code=401)
+    call(base, "POST", path, token=permit, body=dict(first, version=2), code=400)
+    call(base, "POST", path, token=permit, body=dict(first, events=[dict(item, kind=9)]*12), code=400)
+    call(base, "POST", path, token=permit, body=dict(first, events=[dict(item, eastCm=100)]*12), code=400)
+    call(base, "POST", path, token=permit, body=second, code=409)
+    call(base, "POST", path, token=permit, body=first, code=204)
+    call(base, "POST", path, token=permit, body=first, code=204)
+    call(base, "POST", path, token=permit, body=dict(first, dropped=1), code=409)
+    call(base, "POST", path, token=permit, body=dict(second, events=[dict(item, ms=5)]), code=409)
+    call(base, "POST", path, token=permit, body=second, code=204)
+    call(base, "POST", path, token=permit, body=second, code=204)
+    size = subprocess.check_output(["docker", "exec", container, "psql", "-U", "spell", "-d", "spell", "-Atqc",
+        f"SELECT count(*),sum(jsonb_array_length(events)) FROM spell_diagnostic_events WHERE seat_hash='{digest}'"], text=True)
+    assert size.strip() == "2|13"
+    print("PASS diagnostic receipt; exactly one counter row, two ordered pages, 13 events; duplicates ignored, unauthorized precision rejected")
 
 
 if __name__ == "__main__":

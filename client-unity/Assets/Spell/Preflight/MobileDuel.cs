@@ -27,6 +27,10 @@ namespace Spell.Client.Preflight
         ArenaSurface surface;
         bool? ready;
         bool inBackground, cast;
+        DiagnosticsUpload journal;
+        int lastTracking = -1, lastModules = -1, lastPhase = -1, lastHpA = -1, lastHpB = -1;
+        ulong loggedImpact;
+        double nextPrecisionSample;
         ulong lastPose, command, lastImpact;
         long lastSample;
         double retryAt, nextPing, lastReceipt;
@@ -36,6 +40,7 @@ namespace Spell.Client.Preflight
         void Start()
         {
             online = GetComponent<OnlineArenaDownload>();
+            journal = GetComponent<DiagnosticsUpload>();
             device = GetComponent<DeviceDiagnostics>();
             visuals = GetComponent<DuelVisuals>();
             visuals.CastRequested += RequestCast;
@@ -48,7 +53,9 @@ namespace Spell.Client.Preflight
             {
                 StopSocket();
                 seat = next;
-                command = lastImpact = 0;
+                command = lastImpact = loggedImpact = 0;
+                lastTracking = lastModules = lastPhase = lastHpA = lastHpB = -1;
+                nextPrecisionSample = 0;
                 HasStarted = false;
                 retryAt = 0;
             }
@@ -59,6 +66,10 @@ namespace Spell.Client.Preflight
             }
             if (seat == null || inBackground) return;
             double now = Time.realtimeSinceStartupAsDouble;
+            int tracking = device.Timing.HasRecentTracking ? 1 : 0;
+            if (tracking != lastTracking) { journal?.Events?.Event(PilotEvent.Tracking, tracking); lastTracking = tracking; }
+            int styles = (visuals.MarkerThemeName == "Necro" ? 2 : 0) | (visuals.FireballStyleName == "Rune" ? 1 : 0);
+            if (lastModules != styles) { journal?.Events?.Event(PilotEvent.Modules, styles, visuals.FrameLimit); lastModules = styles; }
             if (socket == null)
             {
                 if (now >= retryAt) Connect();
@@ -79,6 +90,7 @@ namespace Spell.Client.Preflight
             if (ready != calibrated)
             {
                 ready = calibrated;
+                journal?.Events?.Event(PilotEvent.Calibration, calibrated ? 1 : 0);
                 Send(new ClientFrame { Ready = new Ready { LoadedInRam = true, Calibrated = calibrated,
                     CombatVersion = 1, ArenaRevision = 1, ArenaSha256 = surface.Sha256, Preset = online.PresetId } });
                 return;
@@ -90,6 +102,7 @@ namespace Spell.Client.Preflight
                     !snapshot.Combat.Finished)
                 {
                     Send(new ClientFrame { Cast = new CastFireball { CommandId = ++command, PoseSequence = lastPose } });
+                    journal?.Events?.Event(PilotEvent.Cast, (int)Math.Min((ulong)int.MaxValue, command));
                     return;
                 }
             }
@@ -113,6 +126,7 @@ namespace Spell.Client.Preflight
                 LastVisualUs = timing.VisualReceiptUs, Position = new Vector3M { East=pt.x, Up=pt.y, North=pt.z },
                 Orientation = new Orientation { X=rotation.x,Y=rotation.y,Z=rotation.z,W=rotation.w },
                 Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, 1.5)*180/Math.PI };
+            if (now >= nextPrecisionSample) { journal?.Pose(pt.x, pt.y, pt.z, residual); nextPrecisionSample = now + 1; }
             if (timing.LastGnssUs > 0) pose.LastGnssUs = timing.LastGnssUs;
             Send(new ClientFrame { Pose = pose });
         }
@@ -138,6 +152,7 @@ namespace Spell.Client.Preflight
                 run.CancelAfter(TimeSpan.FromSeconds(10));
                 await ws.ConnectAsync(new Uri("wss://spell.arnavigator.site/v1/events"), run.Token);
                 run.CancelAfter(Timeout.Infinite);
+                journal?.Events?.Event(PilotEvent.Connection, 1);
                 lastReceipt = Time.realtimeSinceStartupAsDouble;
                 var bytes = new byte[65536];
                 while (!run.IsCancellationRequested)
@@ -170,6 +185,25 @@ namespace Spell.Client.Preflight
         void Apply(Snapshot value)
         {
             snapshot = value;
+            if (lastPhase != (int)value.Phase)
+            {
+                lastPhase = (int)value.Phase;
+                journal?.Events?.Event(PilotEvent.Phase, lastPhase);
+            }
+            if (value.Combat?.Version == 1)
+            {
+                if (lastHpA != value.Combat.FounderHp || lastHpB != value.Combat.GuestHp)
+                {
+                    lastHpA = value.Combat.FounderHp; lastHpB = value.Combat.GuestHp;
+                    journal?.Events?.Event(PilotEvent.Health, lastHpA, lastHpB);
+                }
+                foreach (var hit in value.Combat.Impacts)
+                    if (hit.Id > loggedImpact)
+                    {
+                        loggedImpact = hit.Id;
+                        journal?.Events?.Event(PilotEvent.Impact, (int)Math.Min((ulong)int.MaxValue, hit.Id));
+                    }
+            }
             if (value.Phase == Phase.Playing) HasStarted = true;
             double now = Time.realtimeSinceStartupAsDouble;
             var combat = value.Combat;
@@ -198,6 +232,7 @@ namespace Spell.Client.Preflight
         void StopSocket()
         {
             var old = socket;
+            if (old != null) journal?.Events?.Event(PilotEvent.Connection, 0);
             socket = null;
             lifetime?.Cancel();
             lifetime = null;
