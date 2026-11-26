@@ -27,6 +27,10 @@ namespace Spell.Client.Visuals
         int profile;
         MarkerPresentation markers;
         VisualArt guide;
+        TerrainDebugPatch terrainDebug;
+        ArenaSurface debugSurface;
+        ArenaRegistration debugRegistration;
+        bool showTerrain;
         LineRenderer ray, ring;
         Vector3 source, end;
         readonly Vector3[] footprint = new Vector3[48];
@@ -34,6 +38,9 @@ namespace Spell.Client.Visuals
         bool heatLimited;
         float radius;
         public int FrameLimit => budget.FramesPerSecond;
+        public string MarkerThemeName => markerModule.Name;
+        public string FireballStyleName => fireballModule.Name;
+        public bool ThermalLimited => heatLimited;
         public bool HasAim => haveAim;
         public int VisibleFlights => flights.Count;
 
@@ -131,6 +138,20 @@ namespace Spell.Client.Visuals
         }
 
         public void SetCameraOpen(bool visible) => cameraOpen=visible;
+        public void UpdateTerrainDebug(ArenaSurface surface, BoardCalibration boards, Pose view)
+        {
+            if (!cameraOpen || !showTerrain || surface == null || boards == null ||
+                !boards.TryGetSharedFrame(out var frame) || !VisualContract.Valid(view))
+            { terrainDebug?.Hide(); return; }
+            if (debugSurface!=surface)
+            {
+                debugSurface=surface;
+                debugRegistration=ArenaRegistration.ForArena(surface);
+            }
+            if (debugRegistration==null) { terrainDebug?.Hide(); return; }
+            terrainDebug ??= new TerrainDebugPatch();
+            terrainDebug.Update(surface,debugRegistration,frame,view.position);
+        }
         public void SelectFireball(VisualModule<IFireballRenderer> next)
         {
             if (next == null) throw new ArgumentNullException(nameof(next));
@@ -220,6 +241,7 @@ namespace Spell.Client.Visuals
             if (GUILayout.Button($"Grafika · {name} ({FrameLimit} FPS)",GUILayout.MinHeight(44))) ApplyProfile((profile+1)%3);
             if (heatLimited) GUILayout.Label("Telefón sa zahrieva. Grafika beží v úspornom režime.");
             trajectory=GUILayout.Toggle(trajectory," Zobraziť trajektóriu");
+            showTerrain=GUILayout.Toggle(showTerrain," Zobraziť terénnu sieť v kamere");
         }
 
         public void DrawSight(float width,float height)
@@ -242,7 +264,7 @@ namespace Spell.Client.Visuals
             }
         }
 
-        void OnDisable() { ClearAim(); ClearFlights(); markers?.Dispose(); markers=null; }
-        void OnDestroy() => guide?.Dispose();
+        void OnDisable() { ClearAim(); ClearFlights(); markers?.Dispose(); markers=null; terrainDebug?.Hide(); }
+        void OnDestroy() { guide?.Dispose(); terrainDebug?.Dispose(); }
     }
 }

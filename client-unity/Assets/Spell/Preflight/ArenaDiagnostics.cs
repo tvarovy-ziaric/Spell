@@ -65,6 +65,12 @@ namespace Spell.Client.Preflight
             return false;
         }
 
+        void LateUpdate()
+        {
+            if (visuals != null && device != null)
+                visuals.UpdateTerrainDebug(online?.Arena, device.Boards, device.ViewPose);
+        }
+
         static string FixtureUri(string name)
         {
 #if UNITY_EDITOR

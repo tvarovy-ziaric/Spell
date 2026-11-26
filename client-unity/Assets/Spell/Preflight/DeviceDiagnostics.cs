@@ -19,6 +19,7 @@ namespace Spell.Client.Preflight
         public Pose ViewPose => new Pose(view.transform.position, view.transform.rotation);
         GameObject trackingOrigin;
         BoardCalibration boards;
+        public BoardCalibration Boards => boards;
         ARCameraManager cameraManager;
         long lastImageNs;
         long frameCount;
