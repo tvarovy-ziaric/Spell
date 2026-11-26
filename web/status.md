@@ -4,7 +4,7 @@
 
 Zakladateľ vytvorí hru, druhý hráč naskenuje QR kód. Oba telefóny dostávajú tú istú verziu ihriska a pravidiel. Verejný pilot používa malý syntetický kopec.
 
-Verejný server prešiel skúškou dvoch klientov. Spracoval kalibrované odhady polohy, priamy let virtuálneho Fireballu, dopad, auru, hranice a obnovu po výpadku spojenia. Pri opakovanom príkaze odpočítal HP iba raz. Prešlo aj uloženie presetov zakladateľa a opätovné doručenie diagnostických udalostí do vlastného PostgreSQL.
+Dva testovacie klienty sa cez verejný server pripojili do rovnakej hry. Po výpadku sa spojenie obnovilo a opakované zoslanie toho istého Fireballu odpočítalo HP iba raz. Lokálne skúšky rozhodcu preverili aj zákryt terénom, auru a hranice ihriska. Na verejnom serveri prešlo uloženie presetov zakladateľa a opätovné doručenie diagnostických udalostí do vlastného PostgreSQL.
 
 ## Grafika a diagnostika
 
