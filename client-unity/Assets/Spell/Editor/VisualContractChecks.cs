@@ -121,7 +121,7 @@ namespace Spell.Editor
                 new MarkerPoint(0,new V3(8,1,2)),new MarkerPoint(1,new V3(8,1,3.5f)),
                 -V3.UnitY,1,.12f,out var fit);
             var a=new Vector3(8,1,2);
-            Check(Close(projection.ToArena(fit,a),new Vector3(2,102,2)),"synthetic board maps to exact diagnostic fixture");
+            Check(Close(projection.ToArena(fit,a),new Vector3(2,105,2)),"synthetic board maps to exact diagnostic fixture");
             Check(Close(rotated.DirectionToArena(fit,Vector3.forward),Vector3.forward),"survey bearing rotates horizontal axes");
             var testPoint=new Vector3(8.5f,2,2.3f);
             Check(Close(testPoint,rotated.ToTracking(fit,rotated.ToArena(fit,testPoint))),"survey/AR round trip");

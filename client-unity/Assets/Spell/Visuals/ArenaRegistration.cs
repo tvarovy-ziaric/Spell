@@ -25,7 +25,7 @@ namespace Spell.Client.Visuals
             if (terrain == null) return null;
             if (terrain.Sha256 == FixtureDigest)
                 return FromSurvey(terrain,new Survey { version=1,arenaSha256=FixtureDigest,
-                    boardA=new float[]{2,102,2},boardB=new float[]{3.5f,102,2} });
+                    boardA=new float[]{2,105,2},boardB=new float[]{3.5f,105,2} });
             var file=Resources.Load<TextAsset>("SpellSurvey");
             if (!file) return null;
             try { return FromSurvey(terrain,JsonUtility.FromJson<Survey>(file.text)); }
