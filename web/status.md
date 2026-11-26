@@ -1,18 +1,18 @@
 # Stav vývoja
 
-## Ihrisko a skúšobný duel
+## Príprava pred M2
 
-V aplikácii prvý hráč stlačí **Vytvoriť hru** a ukáže QR kód. Druhý stlačí **Naskenovať QR kód** a namieri kameru na displej prvého. Spell pozná adresu herného servera.
+Zakladateľ vytvorí hru, druhý hráč naskenuje QR kód. Oba telefóny dostávajú tú istú verziu ihriska a pravidiel. Verejný pilot používa malý syntetický kopec.
 
-V builde 3 sme tento priebeh prešli na dvoch emulátoroch Android 15 cez verejný server. Virtuálna kamera druhého zariadenia nasnímala kód z obrazovky prvého. Oba zobrazili **Obaja hráči sú v hre** a každý načítal skúšobné ihrisko s mriežkou 7 × 7 do pamäte.
+Verejný server prešiel skúškou dvoch klientov. Spracoval kalibrované odhady polohy, priamy let virtuálneho Fireballu, dopad, auru, hranice a obnovu po výpadku spojenia. Pri opakovanom príkaze odpočítal HP iba raz. Prešlo aj uloženie presetov zakladateľa a opätovné doručenie diagnostických udalostí do vlastného PostgreSQL.
 
-Na počítači prečítali klientská logika aj server rovnaký skúšobný kopec a odmietli poškodený balík. Prešlo 25 kontrol geometrie ihriska, 23 kontrol výpočtu kalibrácie podľa dvoch terčíkov a šesť testov prípravy terénnych dát. V teste časovania mobilnej polohy systém vydal 16 časových vzoriek pri dvoch rôznych vstupných meraniach GNSS.
+## Grafika a diagnostika
 
-Dva simulované klienty sa cez sieť pripojili k duelu. Skúška overila jednorazové párovanie, spoločný štart, zablokovanie ďalších prenosov terénu počas hry aj návrat po výpadku.
+V Unity prešla výmena vykresľovačov Fireballu aj tém terčíkov Inferno a Necro. Pri nedôveryhodnom sledovaní sa dekorácia skryje. Samostatné skúšky overili zameriavač, terénnu sieť, stratu opory, syntetické merania GNSS a prevod výšky do Bpv.
 
-## Čo čaká na skúšku
+## Čo čaká na ihrisko
 
-Na dvoch fyzických telefónoch ešte treba odskúšať čítanie QR kódu z displeja a na ihrisku zmerať presnosť kalibrácie pomocou dvoch terčíkov. Hrateľný duel je ďalšou etapou.
+**M2 zostáva otvorený.** Dvaja ľudia na rozdielnych Androidoch odmerajú polohu spoločného objektu, presnosť po chôdzi a otočení, reakciu na stratu značky a prenos terénu po štarte. Absolútna chyba voči DMR vyžaduje vybraný výrez a nezávislé kontrolné body. Na skutočných telefónoch treba zvlášť overiť čitateľnosť efektov, odozvu, plynulosť a zahrievanie.
 
 ## Posledné APK
 
