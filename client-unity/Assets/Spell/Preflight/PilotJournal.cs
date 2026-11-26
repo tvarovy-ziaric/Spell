@@ -16,11 +16,12 @@ namespace Spell.Client.Diagnostics
     }
 
     // Only counts enter the pilot journal. One durable snapshot per seat, no positions or images.
+#nullable enable
     public sealed class PilotJournal : IMeasurementSink
     {
         readonly string directory;
-        string active, permit;
-        PilotCounters counts;
+        string? active, permit;
+        PilotCounters? counts;
         public bool Recording => active != null;
         public PilotJournal(string directory)
         {
@@ -39,7 +40,7 @@ namespace Spell.Client.Diagnostics
         }
         public void Record(Measure kind, int value = 1)
         {
-            if (!Recording || value < 0) return;
+            if (counts == null || value < 0) return;
             switch (kind)
             {
                 case Measure.GnssFix: counts.gnssFixes = Add(counts.gnssFixes, value); break;
@@ -55,7 +56,7 @@ namespace Spell.Client.Diagnostics
 
         public void Flush()
         {
-            if (!Recording) return;
+            if (active == null || counts == null || permit == null) return;
             string temp = active + ".tmp";
             using (var file = new FileStream(temp, FileMode.Create, FileAccess.Write, FileShare.None))
             using (var writer = new BinaryWriter(file, Encoding.UTF8))
@@ -97,4 +98,5 @@ namespace Spell.Client.Diagnostics
             return data;
         }
     }
+#nullable restore
 }

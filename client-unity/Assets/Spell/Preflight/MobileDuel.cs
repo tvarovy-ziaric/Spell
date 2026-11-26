@@ -96,7 +96,7 @@ namespace Spell.Client.Preflight
             if (now >= nextPing)
             {
                 nextPing = now + 5;
-                Send(new ClientFrame { Ping = new Ping { ClientUs = (long)(now * 1e6) } });
+                Send(new ClientFrame { Ping = new Spell.Protocol.V1.Ping { ClientUs = (long)(now * 1e6) } });
                 return;
             }
             var timing = device.Timing;
