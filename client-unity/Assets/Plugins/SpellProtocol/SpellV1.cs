@@ -53,25 +53,32 @@ namespace Spell.Protocol.V1 {
             "CgtkdXJhdGlvbl91cxgFIAEoAxIVCg1zdGFydF9nYW1lX3VzGAYgASgDEgwK",
             "BGtpbmQYByABKAkiWwoGSW1wYWN0EgoKAmlkGAEgASgEEiQKCHBvc2l0aW9u",
             "GAIgASgLMhIuc3BlbGwudjEuVmVjdG9yM00SDwoHZ2FtZV91cxgDIAEoAxIO",
-            "CgZyZXN1bHQYBCABKAkihwIKDkNvbWJhdFNuYXBzaG90Eg8KB3ZlcnNpb24Y",
-            "ASABKA0SDwoHZ2FtZV91cxgCIAEoAxISCgpmb3VuZGVyX2hwGAMgASgFEhAK",
-            "CGd1ZXN0X2hwGAQgASgFEikKB2ZsaWdodHMYBSADKAsyGC5zcGVsbC52MS5G",
-            "aXJlYmFsbEZsaWdodBIhCgdpbXBhY3RzGAYgAygLMhAuc3BlbGwudjEuSW1w",
-            "YWN0Eg4KBnNhZmV0eRgHIAEoCRINCgVzaWdodBgIIAEoCRIQCghmaW5pc2hl",
-            "ZBgJIAEoCBIXCg9mb3VuZGVyX2NvbW1hbmQYCiABKAQSFQoNZ3Vlc3RfY29t",
-            "bWFuZBgLIAEoBCKSAQoIU25hcHNob3QSHgoFcGhhc2UYASABKA4yDy5zcGVs",
-            "bC52MS5QaGFzZRIQCghyZXZpc2lvbhgCIAEoBBIVCg1mb3VuZGVyX3JlYWR5",
-            "GAMgASgIEhMKC2d1ZXN0X3JlYWR5GAQgASgIEigKBmNvbWJhdBgFIAEoCzIY",
-            "LnNwZWxsLnYxLkNvbWJhdFNuYXBzaG90IqgBCgtDbGllbnRGcmFtZRIgCgVy",
-            "ZWFkeRgBIAEoCzIPLnNwZWxsLnYxLlJlYWR5SAASJAoEcG9zZRgCIAEoCzIU",
-            "LnNwZWxsLnYxLlBvc2VTYW1wbGVIABIeCgRwaW5nGAMgASgLMg4uc3BlbGwu",
-            "djEuUGluZ0gAEiYKBGNhc3QYBCABKAsyFi5zcGVsbC52MS5DYXN0RmlyZWJh",
-            "bGxIAEIJCgdwYXlsb2FkImAKC1NlcnZlckZyYW1lEiYKCHNuYXBzaG90GAEg",
-            "ASgLMhIuc3BlbGwudjEuU25hcHNob3RIABIeCgRwb25nGAIgASgLMg4uc3Bl",
-            "bGwudjEuUG9uZ0gAQgkKB3BheWxvYWQqSQoIVHJhY2tpbmcSFAoQVFJBQ0tJ",
-            "TkdfVU5LTk9XThAAEhQKEFRSQUNLSU5HX0xJTUlURUQQARIRCg1UUkFDS0lO",
-            "R19HT09EEAIqLwoFUGhhc2USDQoJUFJFUEFSSU5HEAASCwoHUExBWUlORxAB",
-            "EgoKBlBBVVNFRBACQhSqAhFTcGVsbC5Qcm90b2NvbC5WMWIGcHJvdG8z"));
+            "CgZyZXN1bHQYBCABKAkiwwEKDUFyZW5hU2VhdFBvc2USEAoIc2VxdWVuY2UY",
+            "ASABKAQSJAoIcG9zaXRpb24YAiABKAsyEi5zcGVsbC52MS5WZWN0b3IzTRIq",
+            "CgtvcmllbnRhdGlvbhgDIAEoCzIVLnNwZWxsLnYxLk9yaWVudGF0aW9uEhgK",
+            "EHBvc2l0aW9uX3NpZ21hX20YBCABKAESFwoPYW5nbGVfc2lnbWFfZGVnGAUg",
+            "ASgBEhsKE2VzdGltYXRlZF9zZXJ2ZXJfdXMYBiABKAMi9gIKDkNvbWJhdFNu",
+            "YXBzaG90Eg8KB3ZlcnNpb24YASABKA0SDwoHZ2FtZV91cxgCIAEoAxISCgpm",
+            "b3VuZGVyX2hwGAMgASgFEhAKCGd1ZXN0X2hwGAQgASgFEikKB2ZsaWdodHMY",
+            "BSADKAsyGC5zcGVsbC52MS5GaXJlYmFsbEZsaWdodBIhCgdpbXBhY3RzGAYg",
+            "AygLMhAuc3BlbGwudjEuSW1wYWN0Eg4KBnNhZmV0eRgHIAEoCRINCgVzaWdo",
+            "dBgIIAEoCRIQCghmaW5pc2hlZBgJIAEoCBIXCg9mb3VuZGVyX2NvbW1hbmQY",
+            "CiABKAQSFQoNZ3Vlc3RfY29tbWFuZBgLIAEoBBItCgxmb3VuZGVyX3Bvc2UY",
+            "DCABKAsyFy5zcGVsbC52MS5BcmVuYVNlYXRQb3NlEisKCmd1ZXN0X3Bvc2UY",
+            "DSABKAsyFy5zcGVsbC52MS5BcmVuYVNlYXRQb3NlEhEKCXNlcnZlcl91cxgO",
+            "IAEoAyKSAQoIU25hcHNob3QSHgoFcGhhc2UYASABKA4yDy5zcGVsbC52MS5Q",
+            "aGFzZRIQCghyZXZpc2lvbhgCIAEoBBIVCg1mb3VuZGVyX3JlYWR5GAMgASgI",
+            "EhMKC2d1ZXN0X3JlYWR5GAQgASgIEigKBmNvbWJhdBgFIAEoCzIYLnNwZWxs",
+            "LnYxLkNvbWJhdFNuYXBzaG90IqgBCgtDbGllbnRGcmFtZRIgCgVyZWFkeRgB",
+            "IAEoCzIPLnNwZWxsLnYxLlJlYWR5SAASJAoEcG9zZRgCIAEoCzIULnNwZWxs",
+            "LnYxLlBvc2VTYW1wbGVIABIeCgRwaW5nGAMgASgLMg4uc3BlbGwudjEuUGlu",
+            "Z0gAEiYKBGNhc3QYBCABKAsyFi5zcGVsbC52MS5DYXN0RmlyZWJhbGxIAEIJ",
+            "CgdwYXlsb2FkImAKC1NlcnZlckZyYW1lEiYKCHNuYXBzaG90GAEgASgLMhIu",
+            "c3BlbGwudjEuU25hcHNob3RIABIeCgRwb25nGAIgASgLMg4uc3BlbGwudjEu",
+            "UG9uZ0gAQgkKB3BheWxvYWQqSQoIVHJhY2tpbmcSFAoQVFJBQ0tJTkdfVU5L",
+            "Tk9XThAAEhQKEFRSQUNLSU5HX0xJTUlURUQQARIRCg1UUkFDS0lOR19HT09E",
+            "EAIqLwoFUGhhc2USDQoJUFJFUEFSSU5HEAASCwoHUExBWUlORxABEgoKBlBB",
+            "VVNFRBACQhSqAhFTcGVsbC5Qcm90b2NvbC5WMWIGcHJvdG8z"));
       descriptor = pbr::FileDescriptor.FromGeneratedCode(descriptorData,
           new pbr::FileDescriptor[] { },
           new pbr::GeneratedClrTypeInfo(new[] {typeof(global::Spell.Protocol.V1.Tracking), typeof(global::Spell.Protocol.V1.Phase), }, null, new pbr::GeneratedClrTypeInfo[] {
@@ -85,7 +92,8 @@ namespace Spell.Protocol.V1 {
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.CastFireball), global::Spell.Protocol.V1.CastFireball.Parser, new[]{ "CommandId", "PoseSequence" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.FireballFlight), global::Spell.Protocol.V1.FireballFlight.Parser, new[]{ "Id", "Owner", "Start", "End", "DurationUs", "StartGameUs", "Kind" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.Impact), global::Spell.Protocol.V1.Impact.Parser, new[]{ "Id", "Position", "GameUs", "Result" }, null, null, null, null),
-            new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.CombatSnapshot), global::Spell.Protocol.V1.CombatSnapshot.Parser, new[]{ "Version", "GameUs", "FounderHp", "GuestHp", "Flights", "Impacts", "Safety", "Sight", "Finished", "FounderCommand", "GuestCommand" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.ArenaSeatPose), global::Spell.Protocol.V1.ArenaSeatPose.Parser, new[]{ "Sequence", "Position", "Orientation", "PositionSigmaM", "AngleSigmaDeg", "EstimatedServerUs" }, null, null, null, null),
+            new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.CombatSnapshot), global::Spell.Protocol.V1.CombatSnapshot.Parser, new[]{ "Version", "GameUs", "FounderHp", "GuestHp", "Flights", "Impacts", "Safety", "Sight", "Finished", "FounderCommand", "GuestCommand", "FounderPose", "GuestPose", "ServerUs" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.Snapshot), global::Spell.Protocol.V1.Snapshot.Parser, new[]{ "Phase", "Revision", "FounderReady", "GuestReady", "Combat" }, null, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.ClientFrame), global::Spell.Protocol.V1.ClientFrame.Parser, new[]{ "Ready", "Pose", "Ping", "Cast" }, new[]{ "Payload" }, null, null, null),
             new pbr::GeneratedClrTypeInfo(typeof(global::Spell.Protocol.V1.ServerFrame), global::Spell.Protocol.V1.ServerFrame.Parser, new[]{ "Snapshot", "Pong" }, new[]{ "Payload" }, null, null, null)
@@ -3533,6 +3541,410 @@ namespace Spell.Protocol.V1 {
 
   }
 
+  /// <summary>
+  /// Latest authoritative arena pose for one seat. No GNSS coordinates, device IDs, or trace history.
+  /// </summary>
+  [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
+  public sealed partial class ArenaSeatPose : pb::IMessage<ArenaSeatPose>
+  #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      , pb::IBufferMessage
+  #endif
+  {
+    private static readonly pb::MessageParser<ArenaSeatPose> _parser = new pb::MessageParser<ArenaSeatPose>(() => new ArenaSeatPose());
+    private pb::UnknownFieldSet _unknownFields;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pb::MessageParser<ArenaSeatPose> Parser { get { return _parser; } }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public static pbr::MessageDescriptor Descriptor {
+      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[10]; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    pbr::MessageDescriptor pb::IMessage.Descriptor {
+      get { return Descriptor; }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ArenaSeatPose() {
+      OnConstruction();
+    }
+
+    partial void OnConstruction();
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ArenaSeatPose(ArenaSeatPose other) : this() {
+      sequence_ = other.sequence_;
+      position_ = other.position_ != null ? other.position_.Clone() : null;
+      orientation_ = other.orientation_ != null ? other.orientation_.Clone() : null;
+      positionSigmaM_ = other.positionSigmaM_;
+      angleSigmaDeg_ = other.angleSigmaDeg_;
+      estimatedServerUs_ = other.estimatedServerUs_;
+      _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ArenaSeatPose Clone() {
+      return new ArenaSeatPose(this);
+    }
+
+    /// <summary>Field number for the "sequence" field.</summary>
+    public const int SequenceFieldNumber = 1;
+    private ulong sequence_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public ulong Sequence {
+      get { return sequence_; }
+      set {
+        sequence_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "position" field.</summary>
+    public const int PositionFieldNumber = 2;
+    private global::Spell.Protocol.V1.Vector3M position_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Spell.Protocol.V1.Vector3M Position {
+      get { return position_; }
+      set {
+        position_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "orientation" field.</summary>
+    public const int OrientationFieldNumber = 3;
+    private global::Spell.Protocol.V1.Orientation orientation_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Spell.Protocol.V1.Orientation Orientation {
+      get { return orientation_; }
+      set {
+        orientation_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "position_sigma_m" field.</summary>
+    public const int PositionSigmaMFieldNumber = 4;
+    private double positionSigmaM_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public double PositionSigmaM {
+      get { return positionSigmaM_; }
+      set {
+        positionSigmaM_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "angle_sigma_deg" field.</summary>
+    public const int AngleSigmaDegFieldNumber = 5;
+    private double angleSigmaDeg_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public double AngleSigmaDeg {
+      get { return angleSigmaDeg_; }
+      set {
+        angleSigmaDeg_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "estimated_server_us" field.</summary>
+    public const int EstimatedServerUsFieldNumber = 6;
+    private long estimatedServerUs_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public long EstimatedServerUs {
+      get { return estimatedServerUs_; }
+      set {
+        estimatedServerUs_ = value;
+      }
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override bool Equals(object other) {
+      return Equals(other as ArenaSeatPose);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public bool Equals(ArenaSeatPose other) {
+      if (ReferenceEquals(other, null)) {
+        return false;
+      }
+      if (ReferenceEquals(other, this)) {
+        return true;
+      }
+      if (Sequence != other.Sequence) return false;
+      if (!object.Equals(Position, other.Position)) return false;
+      if (!object.Equals(Orientation, other.Orientation)) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.Equals(PositionSigmaM, other.PositionSigmaM)) return false;
+      if (!pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.Equals(AngleSigmaDeg, other.AngleSigmaDeg)) return false;
+      if (EstimatedServerUs != other.EstimatedServerUs) return false;
+      return Equals(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override int GetHashCode() {
+      int hash = 1;
+      if (Sequence != 0UL) hash ^= Sequence.GetHashCode();
+      if (position_ != null) hash ^= Position.GetHashCode();
+      if (orientation_ != null) hash ^= Orientation.GetHashCode();
+      if (PositionSigmaM != 0D) hash ^= pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.GetHashCode(PositionSigmaM);
+      if (AngleSigmaDeg != 0D) hash ^= pbc::ProtobufEqualityComparers.BitwiseDoubleEqualityComparer.GetHashCode(AngleSigmaDeg);
+      if (EstimatedServerUs != 0L) hash ^= EstimatedServerUs.GetHashCode();
+      if (_unknownFields != null) {
+        hash ^= _unknownFields.GetHashCode();
+      }
+      return hash;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public override string ToString() {
+      return pb::JsonFormatter.ToDiagnosticString(this);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void WriteTo(pb::CodedOutputStream output) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      output.WriteRawMessage(this);
+    #else
+      if (Sequence != 0UL) {
+        output.WriteRawTag(8);
+        output.WriteUInt64(Sequence);
+      }
+      if (position_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Position);
+      }
+      if (orientation_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Orientation);
+      }
+      if (PositionSigmaM != 0D) {
+        output.WriteRawTag(33);
+        output.WriteDouble(PositionSigmaM);
+      }
+      if (AngleSigmaDeg != 0D) {
+        output.WriteRawTag(41);
+        output.WriteDouble(AngleSigmaDeg);
+      }
+      if (EstimatedServerUs != 0L) {
+        output.WriteRawTag(48);
+        output.WriteInt64(EstimatedServerUs);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(output);
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalWriteTo(ref pb::WriteContext output) {
+      if (Sequence != 0UL) {
+        output.WriteRawTag(8);
+        output.WriteUInt64(Sequence);
+      }
+      if (position_ != null) {
+        output.WriteRawTag(18);
+        output.WriteMessage(Position);
+      }
+      if (orientation_ != null) {
+        output.WriteRawTag(26);
+        output.WriteMessage(Orientation);
+      }
+      if (PositionSigmaM != 0D) {
+        output.WriteRawTag(33);
+        output.WriteDouble(PositionSigmaM);
+      }
+      if (AngleSigmaDeg != 0D) {
+        output.WriteRawTag(41);
+        output.WriteDouble(AngleSigmaDeg);
+      }
+      if (EstimatedServerUs != 0L) {
+        output.WriteRawTag(48);
+        output.WriteInt64(EstimatedServerUs);
+      }
+      if (_unknownFields != null) {
+        _unknownFields.WriteTo(ref output);
+      }
+    }
+    #endif
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public int CalculateSize() {
+      int size = 0;
+      if (Sequence != 0UL) {
+        size += 1 + pb::CodedOutputStream.ComputeUInt64Size(Sequence);
+      }
+      if (position_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Position);
+      }
+      if (orientation_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(Orientation);
+      }
+      if (PositionSigmaM != 0D) {
+        size += 1 + 8;
+      }
+      if (AngleSigmaDeg != 0D) {
+        size += 1 + 8;
+      }
+      if (EstimatedServerUs != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(EstimatedServerUs);
+      }
+      if (_unknownFields != null) {
+        size += _unknownFields.CalculateSize();
+      }
+      return size;
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(ArenaSeatPose other) {
+      if (other == null) {
+        return;
+      }
+      if (other.Sequence != 0UL) {
+        Sequence = other.Sequence;
+      }
+      if (other.position_ != null) {
+        if (position_ == null) {
+          Position = new global::Spell.Protocol.V1.Vector3M();
+        }
+        Position.MergeFrom(other.Position);
+      }
+      if (other.orientation_ != null) {
+        if (orientation_ == null) {
+          Orientation = new global::Spell.Protocol.V1.Orientation();
+        }
+        Orientation.MergeFrom(other.Orientation);
+      }
+      if (other.PositionSigmaM != 0D) {
+        PositionSigmaM = other.PositionSigmaM;
+      }
+      if (other.AngleSigmaDeg != 0D) {
+        AngleSigmaDeg = other.AngleSigmaDeg;
+      }
+      if (other.EstimatedServerUs != 0L) {
+        EstimatedServerUs = other.EstimatedServerUs;
+      }
+      _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
+    }
+
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public void MergeFrom(pb::CodedInputStream input) {
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+      input.ReadRawMessage(this);
+    #else
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, input);
+            break;
+          case 8: {
+            Sequence = input.ReadUInt64();
+            break;
+          }
+          case 18: {
+            if (position_ == null) {
+              Position = new global::Spell.Protocol.V1.Vector3M();
+            }
+            input.ReadMessage(Position);
+            break;
+          }
+          case 26: {
+            if (orientation_ == null) {
+              Orientation = new global::Spell.Protocol.V1.Orientation();
+            }
+            input.ReadMessage(Orientation);
+            break;
+          }
+          case 33: {
+            PositionSigmaM = input.ReadDouble();
+            break;
+          }
+          case 41: {
+            AngleSigmaDeg = input.ReadDouble();
+            break;
+          }
+          case 48: {
+            EstimatedServerUs = input.ReadInt64();
+            break;
+          }
+        }
+      }
+    #endif
+    }
+
+    #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    void pb::IBufferMessage.InternalMergeFrom(ref pb::ParseContext input) {
+      uint tag;
+      while ((tag = input.ReadTag()) != 0) {
+      if ((tag & 7) == 4) {
+        // Abort on any end group tag.
+        return;
+      }
+      switch(tag) {
+          default:
+            _unknownFields = pb::UnknownFieldSet.MergeFieldFrom(_unknownFields, ref input);
+            break;
+          case 8: {
+            Sequence = input.ReadUInt64();
+            break;
+          }
+          case 18: {
+            if (position_ == null) {
+              Position = new global::Spell.Protocol.V1.Vector3M();
+            }
+            input.ReadMessage(Position);
+            break;
+          }
+          case 26: {
+            if (orientation_ == null) {
+              Orientation = new global::Spell.Protocol.V1.Orientation();
+            }
+            input.ReadMessage(Orientation);
+            break;
+          }
+          case 33: {
+            PositionSigmaM = input.ReadDouble();
+            break;
+          }
+          case 41: {
+            AngleSigmaDeg = input.ReadDouble();
+            break;
+          }
+          case 48: {
+            EstimatedServerUs = input.ReadInt64();
+            break;
+          }
+        }
+      }
+    }
+    #endif
+
+  }
+
   [global::System.Diagnostics.DebuggerDisplayAttribute("{ToString(),nq}")]
   public sealed partial class CombatSnapshot : pb::IMessage<CombatSnapshot>
   #if !GOOGLE_PROTOBUF_REFSTRUCT_COMPATIBILITY_MODE
@@ -3548,7 +3960,7 @@ namespace Spell.Protocol.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[10]; }
+      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[11]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -3579,6 +3991,9 @@ namespace Spell.Protocol.V1 {
       finished_ = other.finished_;
       founderCommand_ = other.founderCommand_;
       guestCommand_ = other.guestCommand_;
+      founderPose_ = other.founderPose_ != null ? other.founderPose_.Clone() : null;
+      guestPose_ = other.guestPose_ != null ? other.guestPose_.Clone() : null;
+      serverUs_ = other.serverUs_;
       _unknownFields = pb::UnknownFieldSet.Clone(other._unknownFields);
     }
 
@@ -3730,6 +4145,48 @@ namespace Spell.Protocol.V1 {
       }
     }
 
+    /// <summary>Field number for the "founder_pose" field.</summary>
+    public const int FounderPoseFieldNumber = 12;
+    private global::Spell.Protocol.V1.ArenaSeatPose founderPose_;
+    /// <summary>
+    /// omitted outside trusted active combat
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Spell.Protocol.V1.ArenaSeatPose FounderPose {
+      get { return founderPose_; }
+      set {
+        founderPose_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "guest_pose" field.</summary>
+    public const int GuestPoseFieldNumber = 13;
+    private global::Spell.Protocol.V1.ArenaSeatPose guestPose_;
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public global::Spell.Protocol.V1.ArenaSeatPose GuestPose {
+      get { return guestPose_; }
+      set {
+        guestPose_ = value;
+      }
+    }
+
+    /// <summary>Field number for the "server_us" field.</summary>
+    public const int ServerUsFieldNumber = 14;
+    private long serverUs_;
+    /// <summary>
+    /// same monotonic clock as Pong.server_us
+    /// </summary>
+    [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
+    [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
+    public long ServerUs {
+      get { return serverUs_; }
+      set {
+        serverUs_ = value;
+      }
+    }
+
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public override bool Equals(object other) {
@@ -3756,6 +4213,9 @@ namespace Spell.Protocol.V1 {
       if (Finished != other.Finished) return false;
       if (FounderCommand != other.FounderCommand) return false;
       if (GuestCommand != other.GuestCommand) return false;
+      if (!object.Equals(FounderPose, other.FounderPose)) return false;
+      if (!object.Equals(GuestPose, other.GuestPose)) return false;
+      if (ServerUs != other.ServerUs) return false;
       return Equals(_unknownFields, other._unknownFields);
     }
 
@@ -3774,6 +4234,9 @@ namespace Spell.Protocol.V1 {
       if (Finished != false) hash ^= Finished.GetHashCode();
       if (FounderCommand != 0UL) hash ^= FounderCommand.GetHashCode();
       if (GuestCommand != 0UL) hash ^= GuestCommand.GetHashCode();
+      if (founderPose_ != null) hash ^= FounderPose.GetHashCode();
+      if (guestPose_ != null) hash ^= GuestPose.GetHashCode();
+      if (ServerUs != 0L) hash ^= ServerUs.GetHashCode();
       if (_unknownFields != null) {
         hash ^= _unknownFields.GetHashCode();
       }
@@ -3830,6 +4293,18 @@ namespace Spell.Protocol.V1 {
         output.WriteRawTag(88);
         output.WriteUInt64(GuestCommand);
       }
+      if (founderPose_ != null) {
+        output.WriteRawTag(98);
+        output.WriteMessage(FounderPose);
+      }
+      if (guestPose_ != null) {
+        output.WriteRawTag(106);
+        output.WriteMessage(GuestPose);
+      }
+      if (ServerUs != 0L) {
+        output.WriteRawTag(112);
+        output.WriteInt64(ServerUs);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(output);
       }
@@ -3878,6 +4353,18 @@ namespace Spell.Protocol.V1 {
         output.WriteRawTag(88);
         output.WriteUInt64(GuestCommand);
       }
+      if (founderPose_ != null) {
+        output.WriteRawTag(98);
+        output.WriteMessage(FounderPose);
+      }
+      if (guestPose_ != null) {
+        output.WriteRawTag(106);
+        output.WriteMessage(GuestPose);
+      }
+      if (ServerUs != 0L) {
+        output.WriteRawTag(112);
+        output.WriteInt64(ServerUs);
+      }
       if (_unknownFields != null) {
         _unknownFields.WriteTo(ref output);
       }
@@ -3916,6 +4403,15 @@ namespace Spell.Protocol.V1 {
       }
       if (GuestCommand != 0UL) {
         size += 1 + pb::CodedOutputStream.ComputeUInt64Size(GuestCommand);
+      }
+      if (founderPose_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(FounderPose);
+      }
+      if (guestPose_ != null) {
+        size += 1 + pb::CodedOutputStream.ComputeMessageSize(GuestPose);
+      }
+      if (ServerUs != 0L) {
+        size += 1 + pb::CodedOutputStream.ComputeInt64Size(ServerUs);
       }
       if (_unknownFields != null) {
         size += _unknownFields.CalculateSize();
@@ -3957,6 +4453,21 @@ namespace Spell.Protocol.V1 {
       }
       if (other.GuestCommand != 0UL) {
         GuestCommand = other.GuestCommand;
+      }
+      if (other.founderPose_ != null) {
+        if (founderPose_ == null) {
+          FounderPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+        }
+        FounderPose.MergeFrom(other.FounderPose);
+      }
+      if (other.guestPose_ != null) {
+        if (guestPose_ == null) {
+          GuestPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+        }
+        GuestPose.MergeFrom(other.GuestPose);
+      }
+      if (other.ServerUs != 0L) {
+        ServerUs = other.ServerUs;
       }
       _unknownFields = pb::UnknownFieldSet.MergeFrom(_unknownFields, other._unknownFields);
     }
@@ -4019,6 +4530,24 @@ namespace Spell.Protocol.V1 {
           }
           case 88: {
             GuestCommand = input.ReadUInt64();
+            break;
+          }
+          case 98: {
+            if (founderPose_ == null) {
+              FounderPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+            }
+            input.ReadMessage(FounderPose);
+            break;
+          }
+          case 106: {
+            if (guestPose_ == null) {
+              GuestPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+            }
+            input.ReadMessage(GuestPose);
+            break;
+          }
+          case 112: {
+            ServerUs = input.ReadInt64();
             break;
           }
         }
@@ -4084,6 +4613,24 @@ namespace Spell.Protocol.V1 {
             GuestCommand = input.ReadUInt64();
             break;
           }
+          case 98: {
+            if (founderPose_ == null) {
+              FounderPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+            }
+            input.ReadMessage(FounderPose);
+            break;
+          }
+          case 106: {
+            if (guestPose_ == null) {
+              GuestPose = new global::Spell.Protocol.V1.ArenaSeatPose();
+            }
+            input.ReadMessage(GuestPose);
+            break;
+          }
+          case 112: {
+            ServerUs = input.ReadInt64();
+            break;
+          }
         }
       }
     }
@@ -4106,7 +4653,7 @@ namespace Spell.Protocol.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[11]; }
+      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[12]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4461,7 +5008,7 @@ namespace Spell.Protocol.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[12]; }
+      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[13]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
@@ -4861,7 +5408,7 @@ namespace Spell.Protocol.V1 {
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]
     [global::System.CodeDom.Compiler.GeneratedCode("protoc", null)]
     public static pbr::MessageDescriptor Descriptor {
-      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[13]; }
+      get { return global::Spell.Protocol.V1.SpellV1Reflection.Descriptor.MessageTypes[14]; }
     }
 
     [global::System.Diagnostics.DebuggerNonUserCodeAttribute]

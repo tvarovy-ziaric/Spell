@@ -7,6 +7,7 @@
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="../server/Spell.Server.csproj" />
+    <Compile Include="../client-unity/Assets/Spell/Preflight/RemoteSeatReader.cs" Link="Client/RemoteSeatReader.cs" />
     <Compile Include="../client-unity/Assets/Spell/Preflight/ArenaPreflight.cs" Link="Client/ArenaPreflight.cs" />
     <Compile Include="../client-unity/Assets/Spell/Preflight/PilotJournal.cs" Link="Client/PilotJournal.cs" />
     <Compile Include="../client-unity/Assets/Spell/Preflight/PoseTimeline.cs" Link="Client/PoseTimeline.cs" />

@@ -57,6 +57,15 @@ message Impact {
   int64 game_us = 3;
   string result = 4; // hit, miss, disputed, occluded, boundary
 }
+// Latest authoritative arena pose for one seat. No GNSS coordinates, device IDs, or trace history.
+message ArenaSeatPose {
+  uint64 sequence = 1;
+  Vector3M position = 2;
+  Orientation orientation = 3;
+  double position_sigma_m = 4;
+  double angle_sigma_deg = 5;
+  int64 estimated_server_us = 6;
+}
 message CombatSnapshot {
   uint32 version = 1;
   int64 game_us = 2;
@@ -69,6 +78,10 @@ message CombatSnapshot {
   bool finished = 9;
   uint64 founder_command = 10; // highest consumed id
   uint64 guest_command = 11;
+  ArenaSeatPose founder_pose = 12; // omitted outside trusted active combat
+  ArenaSeatPose guest_pose = 13;
+  int64 server_us = 14; // same monotonic clock as Pong.server_us
+
 }
 message Snapshot {
   Phase phase = 1;

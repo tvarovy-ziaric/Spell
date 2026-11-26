@@ -145,7 +145,10 @@ var aImpact = await Until(a, s => s.Combat?.Impacts.Count == 1);
 var bImpact = await Until(rejoined, s => s.Combat?.Impacts.Count == 1);
 Assert(aImpact.Revision == bImpact.Revision && aImpact.Combat.Equals(bImpact.Combat) &&
     aImpact.Combat.Impacts[0].Result == "hit" && aImpact.Combat.GuestHp == 75, "one shared wire impact");
-Console.WriteLine("PASS two live WebSockets, explicit combat negotiation, duplicated cast, identical authoritative impact and HP");
+Assert(aImpact.Combat.FounderPose.Position.East == caster.Position.East &&
+    bImpact.Combat.GuestPose.Position.East == receiver.Position.East &&
+    aImpact.Combat.ServerUs - bImpact.Combat.GuestPose.EstimatedServerUs < 800000, "fresh shared positions on real sockets");
+Console.WriteLine("PASS two live WebSockets, fresh positions, explicit combat negotiation, duplicated cast, identical authoritative impact and HP");
 using var closed = await http.DeleteAsync("v1/session", ct);
 Assert(closed.StatusCode == HttpStatusCode.NoContent, "guest can leave and end the duel");
 using var ended = await http.GetAsync("v1/session", ct);
