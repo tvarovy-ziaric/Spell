@@ -3,6 +3,7 @@ import argparse
 import hashlib
 import json
 import subprocess
+import time
 import uuid
 from pathlib import Path
 
@@ -57,6 +58,7 @@ def exercise(base, container):
         f"SELECT count(*),sum(jsonb_array_length(events)) FROM spell_diagnostic_events WHERE seat_hash='{digest}'"], text=True)
     assert size.strip() == "2|13"
     print("PASS diagnostic receipt; exactly one counter row, two ordered pages, 13 events; duplicates ignored, unauthorized precision rejected")
+    return digest
 
 
 if __name__ == "__main__":
@@ -65,4 +67,17 @@ if __name__ == "__main__":
     p.add_argument("--container", default="spell-admin-qa")
     args = p.parse_args()
     with server(args.config.resolve()) as base:
-        exercise(base, args.container)
+        synthetic = exercise(base, args.container)
+    # Age only this synthetic seat in the private QA database, then exercise startup cleanup.
+    assert len(synthetic) == 64 and all(c in "0123456789ABCDEF" for c in synthetic)
+    subprocess.run(["docker", "exec", args.container, "psql", "-U", "spell", "-d", "spell", "-qc",
+        f"UPDATE spell_diagnostic_batches SET received_at=now()-interval '8 days' WHERE seat_hash='{synthetic}'"], check=True)
+    with server(args.config.resolve()):
+        for _ in range(20):
+            if count(args.container, synthetic) == 0:
+                break
+            time.sleep(.25)
+        children = subprocess.check_output(["docker", "exec", args.container, "psql", "-U", "spell", "-d", "spell", "-Atqc",
+            f"SELECT count(*) FROM spell_diagnostic_events WHERE seat_hash='{synthetic}'"], text=True)
+        assert count(args.container, synthetic) == 0 and children.strip() == "0"
+    print("PASS seven-day server retention removes counters and event pages after restart")
