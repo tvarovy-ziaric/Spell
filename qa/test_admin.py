@@ -17,14 +17,14 @@ RULES = dict(hitPoints=120, damage=23, auraPenalty=1, speed=6, range=12, radius=
 
 
 @contextmanager
-def server(config):
+def server(config, *server_args):
     sdk = os.environ.get("SPELL_DOTNET", "dotnet")
     environment = dict(os.environ, SPELL_ADMIN_CONFIG=str(config))
     environment.pop("SPELL_POSTGRES", None)
     environment.pop("SPELL_ADMIN_PASSWORD_HASH", None)
     process = subprocess.Popen([sdk, str(ROOT / "server/bin/Release/net10.0/Spell.Server.dll"),
         "--urls", "http://127.0.0.1:0", "--player-hosting", "true", "--arena", "contracts/fixtures/hill.bytes",
-        "--digest", (ROOT / "contracts/fixtures/hill.sha256").read_text().strip()], cwd=ROOT, env=environment,
+        "--digest", (ROOT / "contracts/fixtures/hill.sha256").read_text().strip(), *server_args], cwd=ROOT, env=environment,
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, text=True, errors="replace")
     try:
         for line in process.stdout:
