@@ -19,7 +19,7 @@ namespace Spell.Editor
         public override void PrepareForBuild(BuildPlayerContext context)
         {
             if (context.BuildPlayerOptions.target != BuildTarget.Android) return;
-            foreach (string name in new[] { "ZXing-LICENSE.txt", "ZXing-NOTICE.txt" })
+            foreach (string name in new[] { "ZXing-LICENSE.txt", "ZXing-NOTICE.txt", "Protobuf-LICENSE.txt", "Unsafe-LICENSE.txt", "Unsafe-NOTICES.txt" })
             {
                 string path = Path.GetFullPath(Path.Combine(Application.dataPath, "../ThirdParty", name));
                 context.AddAdditionalPathToStreamingAssets(path, "legal/" + name);
@@ -30,6 +30,7 @@ namespace Spell.Editor
         {
             AppendOnce(Path.Combine(libraryPath, "build.gradle"), Dependency);
             AppendOnce(Path.Combine(libraryPath, "proguard-unity.txt"), BridgeRules);
+            AppendOnce(Path.Combine(libraryPath, "proguard-unity.txt"), "-keep class site.arnavigator.spell.FounderVault { public static *; }");
             string path = Path.Combine(libraryPath, "src/main/AndroidManifest.xml");
             var document = XDocument.Load(path);
             var manifest = document.Root;

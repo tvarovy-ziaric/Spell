@@ -16,12 +16,33 @@ public final class GnssProbe {
     private static LocationManager manager;
     private static long lastFixNs;
     private static long count;
+    private static final FieldGnssCapture[] field = { new FieldGnssCapture(), new FieldGnssCapture() };
+    private static int active = -1;
+    public static synchronized void armField(int board) {
+        if (board < 0 || board >= field.length || manager == null) return;
+        if (active != -1 && field[active].pending(SystemClock.elapsedRealtimeNanos())) return;
+        active = board;
+        field[board].arm(SystemClock.elapsedRealtimeNanos());
+    }
+    public static synchronized String readField(int board) {
+        return board >= 0 && board < field.length ? field[board].read(SystemClock.elapsedRealtimeNanos()) : "";
+    }
+    public static synchronized void clearField() {
+        active = -1;
+        for (FieldGnssCapture capture : field) capture.clear();
+    }
     private static float accuracy;
     private static String state = "Bez povolenia na presnú polohu.";
 
     private GnssProbe() {}
 
     public static long elapsedUs() { return SystemClock.elapsedRealtimeNanos() / 1000; }
+
+    public static int thermalStatus(Activity activity) {
+        if (android.os.Build.VERSION.SDK_INT < 29) return -1;
+        android.os.PowerManager power = (android.os.PowerManager) activity.getSystemService(Context.POWER_SERVICE);
+        return power == null ? -1 : power.getCurrentThermalStatus();
+    }
 
     public static synchronized long lastFixUs() { return lastFixNs / 1000; }
 
@@ -38,6 +59,14 @@ public final class GnssProbe {
                 if (manager == null || location.getElapsedRealtimeNanos() <= lastFixNs) return;
                 lastFixNs = location.getElapsedRealtimeNanos();
                 count++;
+                long now = SystemClock.elapsedRealtimeNanos();
+                if (active != -1 && field[active].pending(now)) {
+                    double vertical = android.os.Build.VERSION.SDK_INT >= 26 && location.hasVerticalAccuracy()
+                        ? location.getVerticalAccuracyMeters() : Double.NaN;
+                    field[active].offer(now, lastFixNs, location.getTime(), location.getLongitude(), location.getLatitude(),
+                        location.hasAltitude() ? location.getAltitude() : Double.NaN,
+                        location.hasAccuracy() ? location.getAccuracy() : Double.NaN, vertical, location.isFromMockProvider());
+                }
                 accuracy = location.hasAccuracy() ? location.getAccuracy() : Float.NaN;
             }
         }
@@ -67,6 +96,7 @@ public final class GnssProbe {
     }
 
     public static synchronized void stop() {
+        clearField();
         if (manager != null) {
             try { manager.removeUpdates(listener); } catch (SecurityException revoked) { /* already revoked */ }
         }

@@ -4,6 +4,7 @@ using System.IO;
 using UnityEngine;
 using UnityEngine.Networking;
 using Spell.Geometry;
+using Spell.Client.Visuals;
 
 namespace Spell.Client.Preflight
 {
@@ -12,6 +13,8 @@ namespace Spell.Client.Preflight
         ArenaSurface arena;
         string result = "Načítavam skúšobné ihrisko…";
         DeviceDiagnostics device;
+        DuelVisuals visuals;
+        bool showVisualSettings;
         OnlineArenaDownload online;
         GUIStyle title;
         GUIStyle label;
@@ -22,7 +25,7 @@ namespace Spell.Client.Preflight
         {
             device = gameObject.AddComponent<DeviceDiagnostics>();
             online = gameObject.AddComponent<OnlineArenaDownload>();
-            Application.targetFrameRate = 60;
+            visuals = gameObject.AddComponent<DuelVisuals>();
             byte[] content = null;
             string digest = null;
             using (var payload = UnityWebRequest.Get(FixtureUri("hill.bytes")))
@@ -62,6 +65,12 @@ namespace Spell.Client.Preflight
             return false;
         }
 
+        void LateUpdate()
+        {
+            if (visuals != null && device != null)
+                visuals.UpdateTerrainDebug(online?.Arena, online?.Registration, device.Boards, device.ViewPose);
+        }
+
         static string FixtureUri(string name)
         {
 #if UNITY_EDITOR
@@ -81,8 +90,12 @@ namespace Spell.Client.Preflight
             GUI.matrix = Matrix4x4.TRS(new Vector3(safe.x, Screen.height - safe.yMax), Quaternion.identity, Vector3.one * scale);
             if (showCamera && device != null && device.Running)
             {
+                var duel = GetComponent<MobileDuel>();
+                if (duel != null && online.SeatToken != null)
+                    GUI.Box(new Rect(12, 52, safe.width / scale - 24, 78), duel.Status, new GUIStyle(GUI.skin.box) { wordWrap = true, fontSize = 16 });
+                visuals.DrawSight(safe.width / scale, safe.height / scale);
                 if (GUI.Button(new Rect(12, safe.height / scale - 58, 210, 46), "Zobraziť diagnostiku"))
-                    showCamera = false;
+                { showCamera = false; visuals.SetCameraOpen(false); }
                 GUI.matrix = original;
                 return;
             }
@@ -97,11 +110,15 @@ namespace Spell.Client.Preflight
             {
                 GUILayout.Space(12);
                 GUILayout.Label(device.Status, label);
+                device.DrawFieldFixes(label);
                 if (device.Running && GUILayout.Button("Zobraziť kameru", GUILayout.MinHeight(46)))
-                    showCamera = true;
+                { showCamera = true; visuals.SetCameraOpen(true); }
                 if (!device.Running && GUILayout.Button("Skontrolovať senzory", GUILayout.MinHeight(46)))
                     device.Begin();
             }
+            if (GUILayout.Button("Nastavenia grafiky", GUILayout.MinHeight(44)))
+                showVisualSettings = !showVisualSettings;
+            if (showVisualSettings) visuals?.DrawSettings();
             GUILayout.EndScrollView();
             GUILayout.EndArea();
             GUI.matrix = original;

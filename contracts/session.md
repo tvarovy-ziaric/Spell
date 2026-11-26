@@ -20,9 +20,11 @@ Poradie je pripojenie, prijatie snímky stavu, overenie celého balíka, kalibr�
 
 `PoseSample` pracuje v lokálnych metroch ihriska, vodorovne na východ a sever od juhozápadnej vzorky, so zvislicou nahor. Zariadenie odošle odhad s rastúcim poradím a monotónnym časom. Chýbajúci GNSS fix sa vynechá. Pri opakovanom použití starého fixu si zachová čas merania. Čas vizuálneho merania protokolu musí byť prevedený na rovnakú časovú základňu ako odhad. Mobilná diagnostika eviduje aj pôvodný čas kamery a samostatný čas prijatia. `Ping/Pong` vráti čas klienta a monotónny čas servera v mikrosekundách na meranie spiatočného času a odhadu posunu hodín.
 
-Pre syntetickú skúšku sú pracovné maximá neistoty 3 m a 10°. Skutočné prahy pre fyzický pilot vyžadujú meranie. Vzorka mimo ihriska, neisté sledovanie alebo chýbajúca vizuálna opora zrušia pripravenosť. Po 800 ms bez novej použiteľnej vzorky server pri najbližšej 100 ms kontrole pozastaví spoločnú reláciu. Odpojenie invaliduje potvrdenie daného miesta. Po pripojení rovnakým tokenom treba obnoviť pripravenosť aj sledovanie.
+Pre syntetickú skúšku sú pracovné maximá neistoty 3 m a 10°. Skutočné prahy pre fyzický pilot vyžadujú meranie. Vzorka mimo ihriska, neisté sledovanie alebo chýbajúca vizuálna opora zrušia pripravenosť. Po 800 ms bez novej použiteľnej vzorky server pri najbližšej 50 ms kontrole pozastaví spoločnú reláciu. Odpojenie invaliduje potvrdenie daného miesta. Po pripojení rovnakým tokenom treba obnoviť pripravenosť aj sledovanie.
 
 `VisualObservation` je rozhranie pre lokálny vizuálny modul. Smer je jednotkový vektor. Pre potvrdenú značku je prípustné ID známej značky s časom snímky a kvalitou v rozsahu 0 až 1. Stratená identita účastníka zruší oprávnenie použiť pozorovanie na korekciu. Mobilná diagnostika používa dve vopred známe dosky. Identifikácia osôb čaká na ďalšiu etapu.
+
+Voliteľný zdroj smeru protihráča v1 prijíma iba dočasnú referenciu, ktorú účastník potvrdil pre konkrétnu reláciu. Čas snímky aj príjmu vstupuje v mikrosekundách na tej istej monotónnej osi. `PoseTimeline` publikuje jednotkový smer iba pri jedinom potvrdenom kandidátovi, čerstvej snímke a dôveryhodnom sledovaní kamery. Žiadny zdroj alebo chýbajúce pozorovanie ponechá smer prázdny. Odhad vzdialenosti, polohy, fyzika a kalibrácia sa týmto údajom nemenia. Automatické skúšky používajú výlučne syntetické identifikátory a smery. Zapojenie fyzickej dobrovoľnej značky hráča a jej asociáciu s reláciou musí overiť skúška na mieste.
 
 | Príklad | Očakávané správanie |
 | --- | --- |
@@ -31,3 +33,5 @@ Pre syntetickú skúšku sú pracovné maximá neistoty 3 m a 10°. Skutočné p
 | Známa značka s overeným ID, kladným časom a jednotkovým smerom (0, 0, 1) | Lokálny modul ju môže použiť na výpočet kalibrácie. |
 | Pozorovanie postavy s nepotvrdenou identitou alebo nulovým vektorom smeru | Nepoužiť na opravu polohy žiadneho hráča. |
 | Kontrola pauzy po oneskorenom doručení čakajúcich správ | Server vyhodnotí aj dodatočné oneskorenie oproti najnižšiemu zistenému časovému posunu konkrétneho spojenia. Starý odhad nemôže obnoviť štart iba tým, že práve dorazil. Absolútne sieťové oneskorenie prvého merania treba odmerať v pilote. |
+
+Rozšírenie kontraktu obsahuje pokyny pre [experimentálneho rozhodcu Fireball v1](combat-v1.md).

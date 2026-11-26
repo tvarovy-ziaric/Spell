@@ -1,0 +1,276 @@
+using System;
+using System.IO;
+using System.Net.WebSockets;
+using System.Threading;
+using System.Threading.Tasks;
+using Google.Protobuf;
+using Spell.Client.Diagnostics;
+using Spell.Client.Visuals;
+using Spell.Geometry;
+using Spell.Protocol.V1;
+using UnityEngine;
+
+namespace Spell.Client.Preflight
+{
+    // All Unity state is read on the main thread. Only one send and one receive may be outstanding.
+    public sealed class MobileDuel : MonoBehaviour
+    {
+        OnlineArenaDownload online;
+        DeviceDiagnostics device;
+        DuelVisuals visuals;
+        ClientWebSocket socket;
+        CancellationTokenSource lifetime;
+        Task sending;
+        string seat;
+        Snapshot snapshot;
+        readonly RemoteSeatReader opponent = new RemoteSeatReader();
+        static long LocalUs => (long)(Time.realtimeSinceStartupAsDouble * 1e6);
+        public bool TryGetOpponentPose(out ArenaSeatPose pose) => opponent.TryRead(LocalUs, out pose);
+        ArenaRegistration registration;
+        ArenaSurface surface;
+        bool? ready;
+        bool inBackground, cast;
+        ulong lastPose, command;
+        readonly System.Collections.Generic.HashSet<ulong> recentImpacts = new System.Collections.Generic.HashSet<ulong>();
+        readonly System.Collections.Generic.Queue<ulong> impactOrder = new System.Collections.Generic.Queue<ulong>();
+        DiagnosticsUpload journal;
+        int lastTracking = -1, lastModules = -1, lastPhase = -1, lastHpA = -1, lastHpB = -1;
+        ulong loggedImpact;
+        double nextPrecisionSample;
+        long lastSample;
+        double retryAt, nextPing, lastReceipt;
+        public bool HasStarted { get; private set; }
+        string status = "";
+        public string Status
+        {
+            get => snapshot?.Phase == Phase.Playing && snapshot.Combat?.Version == 1
+                ? status + (opponent.Fresh(LocalUs) ? " Poloha spoluhráča je čerstvá." : " Čakám na čerstvú polohu spoluhráča.")
+                : status;
+            private set => status = value;
+        }
+
+        void Start()
+        {
+            online = GetComponent<OnlineArenaDownload>();
+            journal = GetComponent<DiagnosticsUpload>();
+            device = GetComponent<DeviceDiagnostics>();
+            visuals = GetComponent<DuelVisuals>();
+            visuals.CastRequested += RequestCast;
+        }
+        void RequestCast() { cast = snapshot?.Phase == Phase.Playing && snapshot.Combat?.Finished == false; }
+        void Update()
+        {
+            string next = online.Arena == null ? null : online.SeatToken;
+            if (next != seat)
+            {
+                StopSocket();
+                seat = next;
+                command = 0;
+                recentImpacts.Clear(); impactOrder.Clear();
+                loggedImpact = 0;
+                lastTracking = lastModules = lastPhase = lastHpA = lastHpB = -1;
+                nextPrecisionSample = 0;
+                HasStarted = false;
+                retryAt = 0;
+            }
+            if (surface != online.Arena)
+            {
+                surface = online.Arena;
+                registration = online.Registration;
+            }
+            if (seat == null || inBackground) return;
+            double now = Time.realtimeSinceStartupAsDouble;
+            int tracking = device.Timing.HasRecentTracking ? 1 : 0;
+            if (tracking != lastTracking) { journal?.Events?.Event(PilotEvent.Tracking, tracking); lastTracking = tracking; }
+            int styles = (visuals.MarkerThemeName == "Necro" ? 2 : 0) | (visuals.FireballStyleName == "Rune" ? 1 : 0);
+            if (lastModules != styles) { journal?.Events?.Event(PilotEvent.Modules, styles, visuals.FrameLimit); lastModules = styles; }
+            if (socket == null)
+            {
+                if (now >= retryAt) Connect();
+                return;
+            }
+            if (socket.State != WebSocketState.Open) return;
+            if (now - lastReceipt > 20) { StopSocket(); retryAt = now + 1; return; }
+            if (sending != null && !sending.IsCompleted) return;
+            if (sending != null && sending.IsFaulted) { StopSocket(); retryAt = now + 2; return; }
+            var frameSource = device.GetComponent<BoardCalibration>();
+            MarkerCalibration frame = null;
+            bool calibrated = registration != null && frameSource != null && frameSource.TryGetSharedFrame(out frame)
+                && device.Timing.HasRecentTracking;
+            if (!calibrated || snapshot?.Phase != Phase.Playing || snapshot.Combat?.Version != 1 || snapshot.Combat?.Finished != false || !online.Rules.fireballEnabled)
+                visuals.ClearAim();
+            else
+                visuals.Predict(surface, registration, frame, device.ViewPose, (float)online.Rules.range, (float)online.Rules.radius);
+            if (ready != calibrated)
+            {
+                ready = calibrated;
+                journal?.Events?.Event(PilotEvent.Calibration, calibrated ? 1 : 0);
+                Send(new ClientFrame { Ready = new Ready { LoadedInRam = true, Calibrated = calibrated,
+                    CombatVersion = 1, ArenaRevision = 1, ArenaSha256 = surface.Sha256, Preset = online.PresetId } });
+                return;
+            }
+            if (cast)
+            {
+                cast = false;
+                if (calibrated && visuals.HasAim && lastPose > 0 && snapshot?.Phase == Phase.Playing &&
+                    !snapshot.Combat.Finished)
+                {
+                    Send(new ClientFrame { Cast = new CastFireball { CommandId = ++command, PoseSequence = lastPose } });
+                    journal?.Events?.Event(PilotEvent.Cast, (int)Math.Min((ulong)int.MaxValue, command));
+                    return;
+                }
+            }
+            if (now >= nextPing)
+            {
+                nextPing = now + 5;
+                long stamp = (long)(now * 1e6);
+                opponent.Ping(stamp);
+                Send(new ClientFrame { Ping = new Spell.Protocol.V1.Ping { ClientUs = stamp } });
+                return;
+            }
+            var timing = device.Timing;
+            if (!calibrated || timing.EstimatedUs <= lastSample) return;
+            lastSample = timing.EstimatedUs;
+            var camera = device.ViewPose;
+            var pt = registration.ToArena(frame, camera.position);
+            var dir = registration.DirectionToArena(frame, camera.rotation * Vector3.forward);
+            var up = registration.DirectionToArena(frame, camera.rotation * Vector3.up);
+            var rotation = Quaternion.LookRotation(dir, up);
+            // Provisional board-fit uncertainty for the diagnostic fixture. Field accuracy is measured at M2.
+            double residual = Math.Max(0.12, frame.MaxResidualMeters);
+            var pose = new PoseSample { Sequence = ++lastPose, ArenaRevision = 1, EstimatedUs = timing.EstimatedUs,
+                LastVisualUs = timing.VisualReceiptUs, Position = new Vector3M { East=pt.x, Up=pt.y, North=pt.z },
+                Orientation = new Orientation { X=rotation.x,Y=rotation.y,Z=rotation.z,W=rotation.w },
+                Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, registration.BoardBLocal.X)*180/Math.PI };
+            if (now >= nextPrecisionSample) { journal?.Pose(pt.x, pt.y, pt.z, residual); nextPrecisionSample = now + 1; }
+            if (timing.LastGnssUs > 0) pose.LastGnssUs = timing.LastGnssUs;
+            Send(new ClientFrame { Pose = pose });
+        }
+        void Send(ClientFrame frame)
+        {
+            sending = SendFrame(socket, lifetime.Token, frame);
+        }
+        async Task SendFrame(ClientWebSocket ws, CancellationToken stop, ClientFrame frame)
+        {
+            await ws.SendAsync(new ArraySegment<byte>(frame.ToByteArray()), WebSocketMessageType.Binary, true, stop);
+            if (frame.Pose != null && ws == socket) GetComponent<DiagnosticsUpload>()?.Sink?.Record(Measure.SentPose);
+        }
+        async void Connect()
+        {
+            var ws = new ClientWebSocket();
+            var run = new CancellationTokenSource();
+            socket = ws;
+            lifetime = run;
+            try
+            {
+                Status = "Pripájam herné spojenie…";
+                ws.Options.SetRequestHeader("Authorization", "Bearer " + seat);
+                run.CancelAfter(TimeSpan.FromSeconds(10));
+                await ws.ConnectAsync(new Uri("wss://spell.arnavigator.site/v1/events"), run.Token);
+                run.CancelAfter(Timeout.Infinite);
+                journal?.Events?.Event(PilotEvent.Connection, 1);
+                lastReceipt = Time.realtimeSinceStartupAsDouble;
+                var bytes = new byte[65536];
+                while (!run.IsCancellationRequested)
+                {
+                    int total = 0;
+                    WebSocketReceiveResult part;
+                    do
+                    {
+                        if (total == bytes.Length) throw new InvalidDataException();
+                        part = await ws.ReceiveAsync(new ArraySegment<byte>(bytes, total, bytes.Length-total),run.Token);
+                        if (part.MessageType != WebSocketMessageType.Binary) return;
+                        total += part.Count;
+                    } while (!part.EndOfMessage);
+                    if (ws != socket) return;
+                    lastReceipt = Time.realtimeSinceStartupAsDouble;
+                    var message = ServerFrame.Parser.ParseFrom(bytes,0,total);
+                    if (message.Snapshot != null) Apply(message.Snapshot);
+                    if (message.Pong != null)
+                    {
+                        RoundTripMs = Math.Max(0,Time.realtimeSinceStartupAsDouble*1000 - message.Pong.ClientUs/1000.0);
+                        opponent.Pong(message.Pong.ClientUs, message.Pong.ServerUs, LocalUs);
+                    }
+                }
+            }
+            catch (Exception) { /* Repeat the authenticated handshake using the existing seat. */ }
+            finally
+            {
+                if (socket == ws) { StopSocket(); retryAt = Time.realtimeSinceStartupAsDouble + 2; }
+                ws.Dispose(); run.Dispose();
+            }
+        }
+        public double RoundTripMs { get; private set; }
+        void Apply(Snapshot value)
+        {
+            snapshot = value;
+            if (lastPhase != (int)value.Phase)
+            {
+                lastPhase = (int)value.Phase;
+                journal?.Events?.Event(PilotEvent.Phase, lastPhase);
+            }
+            if (value.Combat?.Version == 1)
+            {
+                if (lastHpA != value.Combat.FounderHp || lastHpB != value.Combat.GuestHp)
+                {
+                    lastHpA = value.Combat.FounderHp; lastHpB = value.Combat.GuestHp;
+                    journal?.Events?.Event(PilotEvent.Health, lastHpA, lastHpB);
+                }
+                foreach (var hit in value.Combat.Impacts)
+                    if (hit.Id > loggedImpact)
+                    {
+                        loggedImpact = hit.Id;
+                        journal?.Events?.Event(PilotEvent.Impact, (int)Math.Min((ulong)int.MaxValue, hit.Id));
+                    }
+            }
+            opponent.Replace(value, online.IsFounder);
+            if (value.Phase == Phase.Playing) HasStarted = true;
+            double now = Time.realtimeSinceStartupAsDouble;
+            var combat = value.Combat;
+            Status = value.Phase == Phase.Preparing ? "Herné spojenie pripravené. Čakám na kalibráciu oboch hráčov." :
+                value.Phase == Phase.Paused ? "Súboj pozastavený." : "Súboj prebieha.";
+            if (combat == null || combat.Version != 1) { visuals.ClearFlights(); return; }
+            command = Math.Max(command, online.IsFounder ? combat.FounderCommand : combat.GuestCommand);
+            status += $" HP {combat.FounderHp} / {combat.GuestHp}.";
+            status += combat.Safety switch {
+                "warning" or "uncertain" or "collision" => " Ste príliš blízko. Zastavte sa a zväčšite odstup.",
+                "boundary" => " Vráť sa do hraníc ihriska.",
+                "tracking" => " Zameraj znova terčíky.",
+                "mixed-version" => " Obaja potrebujete rovnakú podporovanú verziu.", _ => "" };
+            if (combat.Finished) Status = $"Súboj sa skončil. HP {combat.FounderHp} / {combat.GuestHp}.";
+            var boards = GetComponent<BoardCalibration>();
+            if (registration == null || boards == null || !boards.TryGetSharedFrame(out var frame) || value.Phase != Phase.Playing)
+            { visuals.ClearFlights(); return; }
+            Vector3 ToView(Vector3M p) => registration.ToTracking(frame,new Vector3((float)p.East,(float)p.Up,(float)p.North));
+            foreach (var f in combat.Flights)
+            {
+                double from = now + (f.StartGameUs - combat.GameUs)/1e6;
+                visuals.ShowFireball(f.Id,ToView(f.Start),ToView(f.End),from,from+f.DurationUs/1e6);
+            }
+            foreach (var impact in combat.Impacts)
+            {
+                if (!recentImpacts.Add(impact.Id)) continue;
+                impactOrder.Enqueue(impact.Id);
+                if (impactOrder.Count > 32) recentImpacts.Remove(impactOrder.Dequeue());
+                if (impact.Result != "interrupted" && combat.GameUs - impact.GameUs <= 300000) visuals.ConfirmImpact(impact.Id,ToView(impact.Position),now);
+            }
+        }
+        void StopSocket()
+        {
+            opponent.Reset();
+            nextPing = 0;
+            var old = socket;
+            if (old != null) journal?.Events?.Event(PilotEvent.Connection, 0);
+            socket = null;
+            lifetime?.Cancel();
+            lifetime = null;
+            old?.Abort();
+            if (sending?.IsFaulted == true) _ = sending.Exception;
+            sending = null; ready = null; snapshot = null; cast = false; lastPose = 0; lastSample = 0;
+            visuals?.ClearFlights(); visuals?.ClearAim();
+            Status = seat == null ? "" : "Herné spojenie sa obnovuje…";
+        }
+        void OnApplicationPause(bool paused) { inBackground = paused; if (paused) StopSocket(); }
+        void OnDestroy() { if (visuals != null) visuals.CastRequested -= RequestCast; StopSocket(); }
+    }
+}

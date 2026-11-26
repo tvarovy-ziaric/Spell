@@ -2,6 +2,10 @@
 
 AR hra pre dvoch hráčov na Androide.
 
+## Skúška na dvoch telefónoch
+
+[Postup pre testerov M2](docs/M2-skuska.md) · [Terčíky na vytlačenie](docs/M2-terciky.pdf) · [Audit M0 až M5, testy a otvorené merania](docs/Pripravenost-pred-M2.md)
+
 ## Spustenie vývojovej skúšky
 
 Z koreňa repozitára spusti `python qa/check.py` s Pythonom 3.10+ a .NET SDK 10. Pri prvej obnove knižníc je potrebný prístup k NuGet. Ak má SDK vlastné umiestnenie, nastav `SPELL_DOTNET` na jeho spustiteľný súbor.
@@ -12,7 +16,7 @@ Android projekt je v [client-unity](client-unity). Pre prvé zostavenie potrebuj
 
 Koordinátor pridelí každému APK vlastné číslo a po zostavení overí doručenie do súkromného chatu codexer. [Postup vydania a obnovenia prenosu](tools/README.md)
 
-Herné API na `https://spell.arnavigator.site/v1/` umožňuje prvému telefónu vytvoriť hru s pevnými pravidlami. Druhý telefón načíta QR z displeja zakladateľa. Oba telefóny dostanú rovnaké ihrisko. [Protokol relácie](contracts/session.md)
+Herné API na `https://spell.arnavigator.site/v1/` umožňuje prvému telefónu vytvoriť hru s predvolenými pravidlami alebo s uloženým presetom zakladateľa. Druhý telefón načíta QR z displeja zakladateľa. Oba telefóny dostanú rovnaké ihrisko. [Protokol relácie](contracts/session.md)
 
 Server pri spustení vyžaduje parametre `--arena` a `--digest`. Predvolený súkromný režim navyše vyžaduje náhodný `SPELL_FOUNDER_KEY`. Hráčske párovanie aktivuje prevádzkovateľ prepínačom `--player-hosting true`. Pre lokálny vývoj používaj `--urls http://127.0.0.1:5080`. Docker obraz sa zostavuje z koreňa cez `docker build -f server/Dockerfile -t spell-server .`, balík sa pripája iba na čítanie. [Prevádzka domáceho servera](web/README.md)
 

@@ -48,7 +48,8 @@ namespace Spell.Client.Preflight
         public static bool SupportsSeat(string expectedRole, string? role, string? token, int revision, string? preset, string? sha, string? path)
         {
             return (role == "guest" || role == "founder") && role == expectedRole && Hex(token, 64) && revision == 1 &&
-                preset == "diagnostic-v1" && Hex(sha, 64) && path == "/v1/arena";
+                (preset == "diagnostic-v1" || (preset != null && preset.StartsWith("preset-v1-", StringComparison.Ordinal) &&
+                Hex(preset.Substring(10), 32))) && Hex(sha, 64) && path == "/v1/arena";
         }
 
         public static string NewAttempt()
@@ -82,10 +83,14 @@ namespace Spell.Client.Preflight
         [Serializable] sealed class Ticket
         {
             public Seat seat = null;
+            public string diagnosticPermit;
+            public Spell.Client.Visuals.ArenaRegistration.Survey survey;
             public int arenaRevision = 0;
             public string arenaSha256 = "";
             public string preset = "";
             public string arenaPath = "";
+            public int rulesVersion;
+            public MobileRules rules;
         }
         [Serializable] sealed class Invitation
         {
@@ -134,16 +139,32 @@ namespace Spell.Client.Preflight
 
         static readonly Uri Server = new Uri(GuestInvite.ServerOrigin);
         QrScanner scanner;
+        FounderAdmin admin;
         Texture2D qr;
         Ticket ticket;
         Job queued, retry;
         bool busy, scanning, paired, polling;
-        string code, hostAttempt, joinAttempt;
+        string code, hostAttempt, joinAttempt, hostPresetAtAttempt;
         string status = "", connectionNotice = "";
         float nextPoll;
+        long playTerrainBytes;
+        int playTerrainRequests;
+        internal string SeatToken => ticket?.seat?.token;
+        internal string PresetId => ticket?.preset;
+        internal bool IsFounder => IsHost;
+        internal MobileRules Rules => ticket?.rules ?? defaultRules;
+        readonly MobileRules defaultRules = new MobileRules();
         public ArenaSurface Arena { get; private set; }
+        public Spell.Client.Visuals.ArenaRegistration Registration { get; private set; }
 
-        void Awake() => scanner = gameObject.AddComponent<QrScanner>();
+        Spell.Client.Diagnostics.DiagnosticsUpload journal;
+        void Awake()
+        {
+            scanner = gameObject.AddComponent<QrScanner>();
+            journal = gameObject.AddComponent<Spell.Client.Diagnostics.DiagnosticsUpload>();
+            gameObject.AddComponent<MobileDuel>();
+            admin = gameObject.AddComponent<FounderAdmin>();
+        }
 
         public void Draw(GUIStyle label, float availableWidth)
         {
@@ -151,8 +172,10 @@ namespace Spell.Client.Preflight
             GUI.enabled = previous && !busy && !scanning && queued == Job.None;
             if (ticket == null)
             {
+                GUI.enabled = GUI.enabled && !admin.Busy;
                 if (GUILayout.Button("Vytvoriť hru", GUILayout.MinHeight(48))) queued = Job.Create;
                 if (GUILayout.Button("Naskenovať QR kód", GUILayout.MinHeight(48))) queued = Job.Scan;
+                admin.Draw(label);
             }
             else
             {
@@ -172,6 +195,16 @@ namespace Spell.Client.Preflight
                     if (GUILayout.Button("Obnoviť QR kód", GUILayout.MinHeight(44))) queued = Job.Renew;
                 }
                 if (paired) GUILayout.Label("Obaja hráči sú v hre.", label);
+                var duel = GetComponent<MobileDuel>();
+                if (duel != null && duel.Status.Length > 0) GUILayout.Label(duel.Status, label);
+                if (duel != null && duel.HasStarted) GUILayout.Label($"Terén od štartu: {playTerrainRequests} požiadaviek, {playTerrainBytes} B. Sieť RTT {duel.RoundTripMs:0} ms.", label);
+                if (ticket.rulesVersion == 1 && ticket.rules != null && ticket.preset != "diagnostic-v1")
+                {
+                    var r = ticket.rules;
+                    GUILayout.Label($"Pravidlá hry · {r.hitPoints} HP · poškodenie {r.damage} · " +
+                        $"Fireball {(r.fireballEnabled ? "zapnutý" : "vypnutý")}, {r.speed:g} m/s, dosah {r.range:g} m, účinok {r.radius:g} m. " +
+                        $"Aura {r.auraWarning:g} / {r.auraCollision:g} m, postih {r.auraPenalty} HP.", label);
+                }
             }
             if (status.Length > 0) GUILayout.Label(status, label);
             if (connectionNotice.Length > 0) GUILayout.Label(connectionNotice, label);
@@ -276,8 +309,13 @@ namespace Spell.Client.Preflight
                 {
                     if (job == Job.Create)
                     {
-                        hostAttempt ??= GuestInvite.NewAttempt();
+                        if (hostAttempt == null || hostPresetAtAttempt != admin.Selected)
+                        {
+                            hostAttempt = GuestInvite.NewAttempt();
+                            hostPresetAtAttempt = admin.Selected;
+                        }
                         request.SetRequestHeader("Idempotency-Key", hostAttempt);
+                        admin.Apply(request);
                     }
                     else if (job == Job.Renew) request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                     else
@@ -307,6 +345,7 @@ namespace Spell.Client.Preflight
                     }
                     if (host) SetQr(created.invitation);
                     ticket = reply;
+                    journal.Begin(reply.diagnosticPermit);
                     paired = !host;
                     code = joinAttempt = null;
                     nextPoll = Time.unscaledTime;
@@ -318,9 +357,13 @@ namespace Spell.Client.Preflight
             var arenaBody = new LimitedBody(GuestInvite.MaxArenaBytes);
             using (var request = Request(ticket.arenaPath, "GET", arenaBody))
             {
+                if (GetComponent<MobileDuel>().HasStarted) playTerrainRequests++;
+                journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainRequest);
                 request.timeout = 40;
                 request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                 yield return request.SendWebRequest();
+                if (GetComponent<MobileDuel>().HasStarted) playTerrainBytes += (long)request.downloadedBytes;
+                journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainBytes, (int)Math.Min((ulong)int.MaxValue, request.downloadedBytes));
                 if (!Success(request, arenaBody, Job.Download)) yield break;
                 try { Arena = ArenaPreflight.Load(arenaBody.Bytes(), ticket.arenaSha256); }
                 catch (InvalidDataException)
@@ -328,6 +371,8 @@ namespace Spell.Client.Preflight
                     status = "Ihrisko neprešlo kontrolou obsahu alebo platnosti dát.";
                     yield break;
                 }
+                Registration = ticket.survey == null ? Spell.Client.Visuals.ArenaRegistration.ForArena(Arena) :
+                    Spell.Client.Visuals.ArenaRegistration.FromSurvey(Arena,ticket.survey);
                 status = $"Ihrisko je v pamäti telefónu. Mriežka {Arena.Width} × {Arena.Height}.";
                 retry = Job.None;
             }
@@ -402,6 +447,7 @@ namespace Spell.Client.Preflight
                 status = "QR kód už neplatí. Požiadaj prvého hráča o nový a naskenuj ho.";
                 retry = Job.None;
             }
+            else if (job == Job.Create && request.responseCode == 401) status = "Odomkni nastavenia zakladateľa alebo vyber základné pravidlá.";
             else if (job == Job.Create && request.responseCode == 429) status = "Server je vyťažený. Skús vytvoriť hru o chvíľu.";
             else if (job == Job.Renew && request.responseCode == 401) status = "QR kód už nemožno obnoviť. Overujem obsadenie hry.";
             else if (job == Job.Download && request.responseCode == 403) status = "Server v tomto stave nepovolil stiahnutie ihriska.";
@@ -411,9 +457,12 @@ namespace Spell.Client.Preflight
 
         void ClearRoom()
         {
+            journal.End();
+            playTerrainBytes = playTerrainRequests = 0;
             ClearQr();
             ticket = null;
             Arena = null;
+            Registration = null;
             paired = false;
             hostAttempt = joinAttempt = code = null;
             connectionNotice = "";
