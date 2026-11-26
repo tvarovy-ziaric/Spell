@@ -17,7 +17,7 @@ Na prvom stlačte **Vytvoriť hru**. Na druhom stlačte **Naskenovať QR kód** 
 
 Na každom stlačte **Skontrolovať senzory**, povoľte kameru a presnú polohu a spustite stopky. Postavte sa pred dosky na samostatné pozorovacie miesto, odkiaľ vidíte obe. Každým telefónom zamerajte A aj B v priebehu **12 sekúnd**. Pri prijatí spoločného rámca si zapíšte čas od začiatku pokusu. Pri neúspechu zapíšte „nepodarilo sa“, čas a hlásenie.
 
-Stlačte **Zobraziť kameru**. Pozrite, či na oboch displejoch leží stred gule pri značke 25 cm nad spojnicou. Urobte snímku z každého telefónu. Ak v diagnostike vidíte voľbu témy, vyskúšajte **Inferno** aj **Necro**. Zapíšte, či dekorácie sedia na terčíkoch a čo sa stane, keď kameru odvrátite alebo terčík zakryjete.
+Stlačte **Zobraziť kameru**. Pozrite, či na oboch displejoch leží stred gule pri značke 25 cm nad spojnicou. Urobte snímku z každého telefónu. Cez **Zobraziť diagnostiku → Nastavenia grafiky → Terčíky** vyberte **Inferno** alebo **Necro** a vráťte sa do kamery. Vyskúšajte obe témy. Zapíšte, či dekorácie sedia na terčíkoch a čo sa stane, keď kameru odvrátite alebo terčík zakryjete.
 
 ### 4. Prejdite, otočte sa a vráťte
 
@@ -35,6 +35,6 @@ Stačia snímky alebo opis na papieri. Jeden riadok pre každé meranie môže v
 
 Pre porovnanie dvoch telefónov použijeme vzdialenosť medzi ich odhadmi na rovnakom bode. Pre **absolútnu chybu voči terénu** treba osobitne získať georeferenciu telefónov a nezávislé geodetické súradnice kontrolných bodov na úrovni zadnej kamery. Pri prvej skúške je v poriadku odovzdať iba vzájomné porovnanie a video. Bez podkladov absolútna chyba ostáva nezmeraná.
 
-Pre širší pilot roadmapa navrhuje **30 opakovaných kalibrácií počas dvoch dní** s výmenou rolí na priestore do 30 m. Do výsledku patria aj zlyhané kalibrácie. Ciele sú P95 vzájomnej odchýlky do 1 m, absolútnej vodorovnej do 3 m, výškovej do 1 m a aspoň 90 % kalibrácií pripravených do dvoch minút. P95 označuje hodnotu, ktorú neprekročilo približne 95 % meraní. Po štarte duelu má byť na oboch mobiloch nula nových požiadaviek a nula bajtov terénu. Bez reálneho štartu alebo počítadla označte prenos ako nezmeraný. Výsledok prijíma vlastník po preštudovaní meraní.
+Pre širší pilot roadmapa navrhuje **30 opakovaných kalibrácií počas dvoch dní** s výmenou rolí na priestore do 30 m. Do výsledku patria aj zlyhané kalibrácie. Ciele sú P95 vzájomnej odchýlky do 1 m, absolútnej vodorovnej do 3 m, výškovej do 1 m a aspoň 90 % kalibrácií pripravených do dvoch minút. P95 označuje hodnotu, ktorú neprekročilo približne 95 % meraní. Keď sa duel spustí, na každom telefóne otvorte **Zobraziť diagnostiku**. Odfoťte riadok **Terén od štartu** po štarte a po návrate z chôdze. Na oboch očakávame `0 požiadaviek, 0 B`. Ak sa duel nespustil alebo riadok chýba, zapíšte „nezmerané“. Výsledok prijíma vlastník po preštudovaní meraní.
 
 Technická príloha opisuje meranie voči DMR, formuláre a automatický výpočet. [Vyhodnotenie M2](../qa/field/README.md)
