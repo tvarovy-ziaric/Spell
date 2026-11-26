@@ -84,6 +84,9 @@ namespace Spell.Client.Preflight
             GUI.matrix = Matrix4x4.TRS(new Vector3(safe.x, Screen.height - safe.yMax), Quaternion.identity, Vector3.one * scale);
             if (showCamera && device != null && device.Running)
             {
+                var duel = GetComponent<MobileDuel>();
+                if (duel != null && online.SeatToken != null)
+                    GUI.Box(new Rect(12, 52, safe.width / scale - 24, 78), duel.Status, new GUIStyle(GUI.skin.box) { wordWrap = true, fontSize = 16 });
                 visuals.DrawSight(safe.width / scale, safe.height / scale);
                 if (GUI.Button(new Rect(12, safe.height / scale - 58, 210, 46), "Zobraziť diagnostiku"))
                 { showCamera = false; visuals.SetCameraOpen(false); }

@@ -27,7 +27,9 @@ namespace Spell.Client.Preflight
         ArenaSurface surface;
         bool? ready;
         bool inBackground, cast;
-        ulong lastPose, command, lastImpact;
+        ulong lastPose, command;
+        readonly System.Collections.Generic.HashSet<ulong> recentImpacts = new System.Collections.Generic.HashSet<ulong>();
+        readonly System.Collections.Generic.Queue<ulong> impactOrder = new System.Collections.Generic.Queue<ulong>();
         long lastSample;
         double retryAt, nextPing, lastReceipt;
         public bool HasStarted { get; private set; }
@@ -48,7 +50,8 @@ namespace Spell.Client.Preflight
             {
                 StopSocket();
                 seat = next;
-                command = lastImpact = 0;
+                command = 0;
+                recentImpacts.Clear(); impactOrder.Clear();
                 HasStarted = false;
                 retryAt = 0;
             }
@@ -177,7 +180,12 @@ namespace Spell.Client.Preflight
                 value.Phase == Phase.Paused ? "Súboj pozastavený." : "Súboj prebieha.";
             if (combat == null || combat.Version != 1) { visuals.ClearFlights(); return; }
             command = Math.Max(command, online.IsFounder ? combat.FounderCommand : combat.GuestCommand);
-            Status += $" HP {combat.FounderHp} / {combat.GuestHp}. Aura: {combat.Safety}.";
+            Status += $" HP {combat.FounderHp} / {combat.GuestHp}.";
+            Status += combat.Safety switch {
+                "warning" or "uncertain" or "collision" => " Ste príliš blízko. Zastavte sa a zväčšite odstup.",
+                "boundary" => " Vráť sa do hraníc ihriska.",
+                "tracking" => " Zameraj znova terčíky.",
+                "mixed-version" => " Obaja potrebujete rovnakú podporovanú verziu.", _ => "" };
             if (combat.Finished) Status = $"Súboj sa skončil. HP {combat.FounderHp} / {combat.GuestHp}.";
             var boards = GetComponent<BoardCalibration>();
             if (registration == null || boards == null || !boards.TryGetSharedFrame(out var frame) || value.Phase != Phase.Playing)
@@ -190,9 +198,10 @@ namespace Spell.Client.Preflight
             }
             foreach (var impact in combat.Impacts)
             {
-                if (impact.Id <= lastImpact) continue;
+                if (!recentImpacts.Add(impact.Id)) continue;
+                impactOrder.Enqueue(impact.Id);
+                if (impactOrder.Count > 32) recentImpacts.Remove(impactOrder.Dequeue());
                 if (combat.GameUs - impact.GameUs <= 300000) visuals.ConfirmImpact(impact.Id,ToView(impact.Position),now);
-                lastImpact = Math.Max(lastImpact,impact.Id);
             }
         }
         void StopSocket()
