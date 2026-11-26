@@ -27,6 +27,7 @@ internal static class DiagnosticBatches
     public static void MapDiagnosticBatches(this WebApplication app, string? connection)
     {
         var permits = Protector(app);
+        DiagnosticTape.Map(app, connection, permits);
 
         app.MapPost("/v1/diagnostics/batch", async (HttpContext ctx, Counts counts, CancellationToken stop) =>
         {
@@ -61,6 +62,7 @@ internal static class DiagnosticBatches
                 await db.OpenAsync(stop);
                 await using var command = new NpgsqlCommand(
                     "CREATE TABLE IF NOT EXISTS spell_diagnostic_batches (seat_hash text PRIMARY KEY, counters jsonb NOT NULL, received_at timestamptz NOT NULL DEFAULT now()); " +
+                    "CREATE TABLE IF NOT EXISTS spell_diagnostic_events (seat_hash text REFERENCES spell_diagnostic_batches(seat_hash) ON DELETE CASCADE, page int NOT NULL, pages int NOT NULL, dropped int NOT NULL, last_ms int NOT NULL, events jsonb NOT NULL, PRIMARY KEY(seat_hash,page)); " +
                     "DELETE FROM spell_diagnostic_batches WHERE received_at < now() - interval '7 days'", db);
                 await command.ExecuteNonQueryAsync(stop);
             }

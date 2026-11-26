@@ -41,6 +41,7 @@ def server(config):
 
 def call(origin, method, path, *, code=200, token=None, body=None, headers=None):
     headers = dict(headers or {})
+    headers.setdefault("User-Agent", "Spell-Android-QA/1.0")
     if body is not None:
         headers["Content-Type"] = "application/json"
     if token:

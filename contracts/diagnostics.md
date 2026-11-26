@@ -1,0 +1,9 @@
+# Diagnostická dávka v1
+
+Mobil uchováva počítadlá a časové udalosti v súkromnom adresári aplikácie. Základná konfigurácia zapisuje zmenu kalibrácie, čerstvosti sledovania, dvojice grafických modulov, spojenia, oboch HP a fázy duelu, odoslaný príkaz kúzla a potvrdený dopad. Čas je v milisekundách od začiatku záznamu. Dvojica modulov je maska s bitom 0 pre Rune a bitom 1 pre Necro. Diagnostické rozhranie `IPilotEventSink` prijíma iba číselný typ udalosti a dve číselné hodnoty. Do diagnostiky nevstupuje obraz kamery ani obsah QR.
+
+Lokálny súbor v2 uchová posledných 256 udalostí a počet starších vyradených udalostí. Každých päť sekúnd a pri prechode aplikácie na pozadie sa zapisuje atómová kópia. Po nečakanom ukončení aplikácie sa dá obnoviť posledný zápis. Čítačka podporuje aj pôvodný súbor v1 s počítadlami. Mobil má najviac 64 čakajúcich dávok. Neodoslané súbory staršie ako 48 hodín odstráni.
+
+Po skončení relácie mobil odošle `POST /v1/diagnostics/batch` a potom stránky `POST /v1/diagnostics/events` s najviac 12 chronologickými položkami na stranu. Verzia udalostí je 1. Prvá strana má index 0. Krátkodobé oprávnenie sa viaže na konkrétne miesto hráča. Server prijme opakovanú identickú dávku; rozdielne údaje s rovnakým kľúčom odmietne. Stránky po prerušení prenosu sa odošlú znovu. PostgreSQL drží poradové čísla strán, počty, relatívny čas a údaje počas siedmich dní. Záloha databázy potrebuje vlastný postup mazania.
+
+Presná poloha je v distribuovanom nastavení vypnutá na mobile aj serveri. Jednotková skúška osobitne povoľuje syntetické súradnice a neistotu v lokálnych centimetroch. Zapnutie na reálnych zariadeniach vyžaduje predchádzajúce rozhodnutie vlastníka, informovanie oboch testerov, nastavenie oprávneného prístupu a retenčných pravidiel vrátane záloh. Až pre takú skúšku môže zostavenie povoliť symbol `SPELL_APPROVED_DIAGNOSTIC_POSES` a server `--approved-diagnostic-poses true`.
