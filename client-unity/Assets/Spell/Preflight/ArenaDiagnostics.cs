@@ -97,6 +97,7 @@ namespace Spell.Client.Preflight
             {
                 GUILayout.Space(12);
                 GUILayout.Label(device.Status, label);
+                device.DrawFieldFixes(label);
                 if (device.Running && GUILayout.Button("Zobraziť kameru", GUILayout.MinHeight(46)))
                     showCamera = true;
                 if (!device.Running && GUILayout.Button("Skontrolovať senzory", GUILayout.MinHeight(46)))
