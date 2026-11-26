@@ -82,6 +82,7 @@ namespace Spell.Client.Preflight
         [Serializable] sealed class Ticket
         {
             public Seat seat = null;
+            public string diagnosticPermit;
             public int arenaRevision = 0;
             public string arenaSha256 = "";
             public string preset = "";
@@ -141,9 +142,20 @@ namespace Spell.Client.Preflight
         string code, hostAttempt, joinAttempt;
         string status = "", connectionNotice = "";
         float nextPoll;
+        internal string SeatToken => ticket?.seat?.token;
+        internal string PresetId => ticket?.preset;
+        internal bool IsFounder => IsHost;
+        internal MobileRules Rules => ticket?.rules ?? defaultRules;
+        readonly MobileRules defaultRules = new MobileRules();
         public ArenaSurface Arena { get; private set; }
 
-        void Awake() => scanner = gameObject.AddComponent<QrScanner>();
+        Spell.Client.Diagnostics.DiagnosticsUpload journal;
+        void Awake()
+        {
+            scanner = gameObject.AddComponent<QrScanner>();
+            journal = gameObject.AddComponent<Spell.Client.Diagnostics.DiagnosticsUpload>();
+            gameObject.AddComponent<MobileDuel>();
+        }
 
         public void Draw(GUIStyle label, float availableWidth)
         {
@@ -172,6 +184,8 @@ namespace Spell.Client.Preflight
                     if (GUILayout.Button("Obnoviť QR kód", GUILayout.MinHeight(44))) queued = Job.Renew;
                 }
                 if (paired) GUILayout.Label("Obaja hráči sú v hre.", label);
+                var duel = GetComponent<MobileDuel>();
+                if (duel != null && duel.Status.Length > 0) GUILayout.Label(duel.Status, label);
             }
             if (status.Length > 0) GUILayout.Label(status, label);
             if (connectionNotice.Length > 0) GUILayout.Label(connectionNotice, label);
@@ -307,6 +321,7 @@ namespace Spell.Client.Preflight
                     }
                     if (host) SetQr(created.invitation);
                     ticket = reply;
+                    journal.Begin(reply.diagnosticPermit);
                     paired = !host;
                     code = joinAttempt = null;
                     nextPoll = Time.unscaledTime;
@@ -318,9 +333,11 @@ namespace Spell.Client.Preflight
             var arenaBody = new LimitedBody(GuestInvite.MaxArenaBytes);
             using (var request = Request(ticket.arenaPath, "GET", arenaBody))
             {
+                journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainRequest);
                 request.timeout = 40;
                 request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                 yield return request.SendWebRequest();
+                journal.Sink?.Record(Spell.Client.Diagnostics.Measure.TerrainBytes, (int)Math.Min((ulong)int.MaxValue, request.downloadedBytes));
                 if (!Success(request, arenaBody, Job.Download)) yield break;
                 try { Arena = ArenaPreflight.Load(arenaBody.Bytes(), ticket.arenaSha256); }
                 catch (InvalidDataException)
@@ -411,6 +428,7 @@ namespace Spell.Client.Preflight
 
         void ClearRoom()
         {
+            journal.End();
             ClearQr();
             ticket = null;
             Arena = null;

@@ -14,11 +14,21 @@ namespace Spell.Client.Preflight
     public sealed class DeviceDiagnostics : MonoBehaviour
     {
         public bool Running { get; private set; }
-        public string Status { get; private set; } = "Diagnostika zistí stav ARCore, kamery a GNSS. Merania zostávajú v tomto telefóne.";
+        public PoseTiming Timing {
+            get {
+#if UNITY_ANDROID && !UNITY_EDITOR
+                return timing;
+#else
+                return default;
+#endif
+            }
+        }
+        public string Status { get; private set; } = "Diagnostika zistí stav ARCore, kamery a GNSS. Po hre sa odošlú diagnostické počítadlá bez presnej polohy.";
         Camera view;
         GameObject trackingOrigin;
         BoardCalibration boards;
         ARCameraManager cameraManager;
+        Spell.Client.Diagnostics.IMeasurementSink sink;
         long lastImageNs;
         long frameCount;
         double nextDisplay;
@@ -118,6 +128,7 @@ namespace Spell.Client.Preflight
             view.gameObject.AddComponent<ARCameraBackground>();
             gameObject.AddComponent<ARInputManager>();
             gameObject.AddComponent<ARSession>();
+            sink = GetComponent<Spell.Client.Diagnostics.DiagnosticsUpload>()?.Sink;
             boards = gameObject.AddComponent<BoardCalibration>();
             boards.Begin(trackingOrigin);
             gnss = new AndroidJavaClass("site.arnavigator.spell.GnssProbe");
@@ -162,6 +173,7 @@ namespace Spell.Client.Preflight
             {
                 lastImageNs = frame.timestampNs.Value;
                 frameCount++;
+                sink?.Record(Spell.Client.Diagnostics.Measure.VisualFrame);
                 boards?.CameraFrame();
 #if UNITY_ANDROID && !UNITY_EDITOR
                 if (gnss != null) timeline.ObserveVisual(lastImageNs / 1000, gnss.CallStatic<long>("elapsedUs"),
@@ -176,8 +188,12 @@ namespace Spell.Client.Preflight
             if (gnss == null) return;
             long nowUs = gnss.CallStatic<long>("elapsedUs");
             long fixUs = gnss.CallStatic<long>("lastFixUs");
-            if (fixUs > 0) timeline.ObserveGnss(fixUs);
-            if (timeline.TryPublish(nowUs, out PoseTiming next)) timing = next;
+            if (timeline.ObserveGnss(fixUs)) sink?.Record(Spell.Client.Diagnostics.Measure.GnssFix);
+            if (timeline.TryPublish(nowUs, out PoseTiming next))
+            {
+                timing = next;
+                sink?.Record(Spell.Client.Diagnostics.Measure.Estimate);
+            }
             if (Time.unscaledTimeAsDouble < nextDisplay) return;
             nextDisplay = Time.unscaledTimeAsDouble + 0.25;
             string gps = gnss.CallStatic<string>("status");
