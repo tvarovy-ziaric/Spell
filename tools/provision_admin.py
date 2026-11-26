@@ -15,6 +15,15 @@ def docker(*args, env=None, check=True):
                           text=True, check=check)
 
 
+def protect_file(path):
+    if os.name != "nt":
+        os.chmod(path, 0o600)
+        return
+    owner = subprocess.check_output(["whoami"], text=True).strip()
+    subprocess.run(["icacls", str(path), "/inheritance:r", "/grant:r", owner + ":F",
+                    "*S-1-5-18:F", "*S-1-5-32-544:F"], check=True, stdout=subprocess.DEVNULL)
+
+
 def provision(directory, name, port):
     directory.mkdir(parents=True, exist_ok=True)
     config = directory / "admin.config.json"
@@ -30,13 +39,12 @@ def provision(directory, name, port):
     # Persist recovery credentials before creating the durable volume. Do not log secret values.
     private = directory / "founder-password.txt"
     with private.open("x", encoding="utf8") as out:
+        protect_file(private)
         out.write(password + "\n")
     with config.open("x", encoding="utf8") as out:
+        protect_file(config)
         json.dump(dict(postgres=f"Host=127.0.0.1;Port={port};Database=spell;Username=spell;Password={db_password}",
                        passwordHash=":".join(base64.b64encode(x).decode() for x in (salt, digest))), out)
-    if os.name != "nt":
-        os.chmod(config, 0o600)
-        os.chmod(private, 0o600)
     env = dict(os.environ, POSTGRES_PASSWORD=db_password)
     docker("run", "--detach", "--name", name, "--restart", "unless-stopped", "-p", f"127.0.0.1:{port}:5432",
            "--mount", f"type=volume,source={volume},target=/var/lib/postgresql/data",
