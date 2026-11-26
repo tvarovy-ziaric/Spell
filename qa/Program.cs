@@ -9,6 +9,7 @@ using Spell.Client.Preflight;
 using Spell.Protocol.V1;
 using Spell.Server;
 
+AdminChecks.Run();
 var folder = args[0];
 PoseReplay.Run(Path.Combine(folder, "timing.csv"));
 var bytes = File.ReadAllBytes(Path.Combine(folder, "hill.bytes"));

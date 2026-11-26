@@ -48,7 +48,8 @@ namespace Spell.Client.Preflight
         public static bool SupportsSeat(string expectedRole, string? role, string? token, int revision, string? preset, string? sha, string? path)
         {
             return (role == "guest" || role == "founder") && role == expectedRole && Hex(token, 64) && revision == 1 &&
-                preset == "diagnostic-v1" && Hex(sha, 64) && path == "/v1/arena";
+                (preset == "diagnostic-v1" || (preset != null && preset.StartsWith("preset-v1-", StringComparison.Ordinal) &&
+                Hex(preset.Substring(10), 32))) && Hex(sha, 64) && path == "/v1/arena";
         }
 
         public static string NewAttempt()
@@ -86,6 +87,8 @@ namespace Spell.Client.Preflight
             public string arenaSha256 = "";
             public string preset = "";
             public string arenaPath = "";
+            public int rulesVersion;
+            public MobileRules rules;
         }
         [Serializable] sealed class Invitation
         {
@@ -134,16 +137,21 @@ namespace Spell.Client.Preflight
 
         static readonly Uri Server = new Uri(GuestInvite.ServerOrigin);
         QrScanner scanner;
+        FounderAdmin admin;
         Texture2D qr;
         Ticket ticket;
         Job queued, retry;
         bool busy, scanning, paired, polling;
-        string code, hostAttempt, joinAttempt;
+        string code, hostAttempt, joinAttempt, hostPresetAtAttempt;
         string status = "", connectionNotice = "";
         float nextPoll;
         public ArenaSurface Arena { get; private set; }
 
-        void Awake() => scanner = gameObject.AddComponent<QrScanner>();
+        void Awake()
+        {
+            scanner = gameObject.AddComponent<QrScanner>();
+            admin = gameObject.AddComponent<FounderAdmin>();
+        }
 
         public void Draw(GUIStyle label, float availableWidth)
         {
@@ -151,8 +159,10 @@ namespace Spell.Client.Preflight
             GUI.enabled = previous && !busy && !scanning && queued == Job.None;
             if (ticket == null)
             {
+                GUI.enabled = GUI.enabled && !admin.Busy;
                 if (GUILayout.Button("Vytvoriť hru", GUILayout.MinHeight(48))) queued = Job.Create;
                 if (GUILayout.Button("Naskenovať QR kód", GUILayout.MinHeight(48))) queued = Job.Scan;
+                admin.Draw(label);
             }
             else
             {
@@ -172,6 +182,13 @@ namespace Spell.Client.Preflight
                     if (GUILayout.Button("Obnoviť QR kód", GUILayout.MinHeight(44))) queued = Job.Renew;
                 }
                 if (paired) GUILayout.Label("Obaja hráči sú v hre.", label);
+                if (ticket.rulesVersion == 1 && ticket.rules != null && ticket.preset != "diagnostic-v1")
+                {
+                    var r = ticket.rules;
+                    GUILayout.Label($"Pravidlá hry · {r.hitPoints} HP · poškodenie {r.damage} · " +
+                        $"Fireball {(r.fireballEnabled ? "zapnutý" : "vypnutý")}, {r.speed:g} m/s, dosah {r.range:g} m, účinok {r.radius:g} m. " +
+                        $"Aura {r.auraWarning:g} / {r.auraCollision:g} m, postih {r.auraPenalty} HP.", label);
+                }
             }
             if (status.Length > 0) GUILayout.Label(status, label);
             if (connectionNotice.Length > 0) GUILayout.Label(connectionNotice, label);
@@ -276,8 +293,13 @@ namespace Spell.Client.Preflight
                 {
                     if (job == Job.Create)
                     {
-                        hostAttempt ??= GuestInvite.NewAttempt();
+                        if (hostAttempt == null || hostPresetAtAttempt != admin.Selected)
+                        {
+                            hostAttempt = GuestInvite.NewAttempt();
+                            hostPresetAtAttempt = admin.Selected;
+                        }
                         request.SetRequestHeader("Idempotency-Key", hostAttempt);
+                        admin.Apply(request);
                     }
                     else if (job == Job.Renew) request.SetRequestHeader("Authorization", "Bearer " + ticket.seat.token);
                     else
@@ -402,6 +424,7 @@ namespace Spell.Client.Preflight
                 status = "QR kód už neplatí. Požiadaj prvého hráča o nový a naskenuj ho.";
                 retry = Job.None;
             }
+            else if (job == Job.Create && request.responseCode == 401) status = "Odomkni nastavenia zakladateľa alebo vyber základné pravidlá.";
             else if (job == Job.Create && request.responseCode == 429) status = "Server je vyťažený. Skús vytvoriť hru o chvíľu.";
             else if (job == Job.Renew && request.responseCode == 401) status = "QR kód už nemožno obnoviť. Overujem obsadenie hry.";
             else if (job == Job.Download && request.responseCode == 403) status = "Server v tomto stave nepovolil stiahnutie ihriska.";

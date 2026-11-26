@@ -30,6 +30,7 @@ namespace Spell.Editor
         {
             AppendOnce(Path.Combine(libraryPath, "build.gradle"), Dependency);
             AppendOnce(Path.Combine(libraryPath, "proguard-unity.txt"), BridgeRules);
+            AppendOnce(Path.Combine(libraryPath, "proguard-unity.txt"), "-keep class site.arnavigator.spell.FounderVault { public static *; }");
             string path = Path.Combine(libraryPath, "src/main/AndroidManifest.xml");
             var document = XDocument.Load(path);
             var manifest = document.Root;

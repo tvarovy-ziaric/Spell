@@ -1,18 +1,23 @@
 namespace Spell.Server;
 
+internal sealed record Admission(Seat Seat, string PresetId, DuelRules Rules);
+
 // Each arena is immutable and shared. Membership and invitations belong to one duel.
 internal sealed class DuelSessions(ArenaPackage arena, TimeProvider time)
 {
-    private sealed class Room(DuelLobby lobby, long now)
+    private sealed class Room(DuelLobby lobby, long now, string presetId, DuelRules rules, byte[]? owner)
     {
         public readonly DuelLobby Lobby = lobby;
         public long LastActive = now;
+        public readonly string PresetId = presetId;
+        public readonly DuelRules Rules = rules;
+        public readonly byte[]? Owner = owner;
     }
 
     private readonly Dictionary<string, Room> rooms = new();
     private readonly object gate = new();
 
-    public (Seat Seat, Invitation Invitation)? Create(string? attempt)
+    public (Admission Player, Invitation Invitation)? Create(string? attempt, SavedPreset? preset = null, byte[]? owner = null)
     {
         lock (gate)
         {
@@ -21,13 +26,19 @@ internal sealed class DuelSessions(ArenaPackage arena, TimeProvider time)
             if (!rooms.TryGetValue(key, out var room))
             {
                 if (rooms.Count >= 128) return null;
-                rooms[key] = room = new Room(new DuelLobby(arena, time), time.GetTimestamp());
+                var lobby = new DuelLobby(arena, time);
+                var id = preset?.Id ?? DuelLobby.Preset;
+                var rules = preset?.Rules ?? DuelRules.Default;
+                lobby.ConfigureRules(id, rules);
+                rooms[key] = room = new Room(lobby, time.GetTimestamp(), id, rules, owner);
             }
-            return room.Lobby.Create(key);
+            if (room.PresetId != (preset?.Id ?? DuelLobby.Preset) ||
+                !(room.Owner ?? Array.Empty<byte>()).SequenceEqual(owner ?? Array.Empty<byte>())) return null;
+            return room.Lobby.Create(key) is { } created ? (new Admission(created.Seat, room.PresetId, room.Rules), created.Invitation) : null;
         }
     }
 
-    public Seat? Join(string code, string? attempt)
+    public Admission? Join(string code, string? attempt)
     {
         lock (gate)
         {
@@ -35,7 +46,7 @@ internal sealed class DuelSessions(ArenaPackage arena, TimeProvider time)
             {
                 if (room.Lobby.Join(code, attempt) is not { } seat) continue;
                 room.LastActive = time.GetTimestamp();
-                return seat;
+                return new Admission(seat, room.PresetId, room.Rules);
             }
             return null;
         }
