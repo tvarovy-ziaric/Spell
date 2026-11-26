@@ -10,6 +10,7 @@ var path = builder.Configuration["arena"] ?? throw new ArgumentException("Supply
 var digest = builder.Configuration["digest"] ?? throw new ArgumentException("Missing --digest.");
 if (new FileInfo(path).Length > 64 * 1024 * 1024) throw new InvalidDataException("Arena exceeds the pilot size limit.");
 var arena = new ArenaPackage(File.ReadAllBytes(path), digest);
+var fieldSurvey = FieldSurvey.Load(builder.Configuration["survey"], arena);
 var founderKey = Environment.GetEnvironmentVariable("SPELL_FOUNDER_KEY");
 var playerHosting = builder.Configuration.GetValue<bool>("player-hosting");
 if (!playerHosting && (string.IsNullOrWhiteSpace(founderKey) || founderKey.Length < 32))
@@ -50,7 +51,7 @@ string Bearer(HttpContext ctx)
 object Describe(Admission player)
 {
     var seat = player.Seat;
-    return new { seat, arenaRevision = DuelLobby.ArenaRevision, arenaSha256 = arena.Digest,
+    return new { seat, survey = fieldSurvey, arenaRevision = DuelLobby.ArenaRevision, arenaSha256 = arena.Digest,
         diagnosticPermit = DiagnosticBatches.Permit(app, spellPostgres, seat.Token),
         preset = player.PresetId, rulesVersion = 1, rules = player.Rules,
         arenaPath = "/v1/arena", socketPath = "/v1/events" };

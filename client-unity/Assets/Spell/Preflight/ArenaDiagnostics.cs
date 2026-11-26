@@ -68,7 +68,7 @@ namespace Spell.Client.Preflight
         void LateUpdate()
         {
             if (visuals != null && device != null)
-                visuals.UpdateTerrainDebug(online?.Arena, device.Boards, device.ViewPose);
+                visuals.UpdateTerrainDebug(online?.Arena, online?.Registration, device.Boards, device.ViewPose);
         }
 
         static string FixtureUri(string name)

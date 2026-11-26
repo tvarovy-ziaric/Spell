@@ -58,7 +58,7 @@ namespace Spell.Client.Preflight
             if (surface != online.Arena)
             {
                 surface = online.Arena;
-                registration = surface == null ? null : ArenaRegistration.ForArena(surface);
+                registration = online.Registration;
             }
             if (seat == null || inBackground) return;
             double now = Time.realtimeSinceStartupAsDouble;
@@ -115,7 +115,7 @@ namespace Spell.Client.Preflight
             var pose = new PoseSample { Sequence = ++lastPose, ArenaRevision = 1, EstimatedUs = timing.EstimatedUs,
                 LastVisualUs = timing.VisualReceiptUs, Position = new Vector3M { East=pt.x, Up=pt.y, North=pt.z },
                 Orientation = new Orientation { X=rotation.x,Y=rotation.y,Z=rotation.z,W=rotation.w },
-                Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, 1.5)*180/Math.PI };
+                Tracking = Tracking.Good, PositionSigmaM = residual, AngleSigmaDeg = Math.Atan2(residual, registration.BoardBLocal.X)*180/Math.PI };
             if (timing.LastGnssUs > 0) pose.LastGnssUs = timing.LastGnssUs;
             Send(new ClientFrame { Pose = pose });
         }

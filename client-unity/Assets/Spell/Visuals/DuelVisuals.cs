@@ -138,7 +138,7 @@ namespace Spell.Client.Visuals
         }
 
         public void SetCameraOpen(bool visible) => cameraOpen=visible;
-        public void UpdateTerrainDebug(ArenaSurface surface, BoardCalibration boards, Pose view)
+        public void UpdateTerrainDebug(ArenaSurface surface, ArenaRegistration registration, BoardCalibration boards, Pose view)
         {
             if (!cameraOpen || !showTerrain || surface == null || boards == null ||
                 !boards.TryGetSharedFrame(out var frame) || !VisualContract.Valid(view))
@@ -146,7 +146,7 @@ namespace Spell.Client.Visuals
             if (debugSurface!=surface)
             {
                 debugSurface=surface;
-                debugRegistration=ArenaRegistration.ForArena(surface);
+                debugRegistration=registration;
             }
             if (debugRegistration==null) { terrainDebug?.Hide(); return; }
             terrainDebug ??= new TerrainDebugPatch();

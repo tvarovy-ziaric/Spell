@@ -84,6 +84,7 @@ namespace Spell.Client.Preflight
         {
             public Seat seat = null;
             public string diagnosticPermit;
+            public Spell.Client.Visuals.ArenaRegistration.Survey survey;
             public int arenaRevision = 0;
             public string arenaSha256 = "";
             public string preset = "";
@@ -154,6 +155,7 @@ namespace Spell.Client.Preflight
         internal MobileRules Rules => ticket?.rules ?? defaultRules;
         readonly MobileRules defaultRules = new MobileRules();
         public ArenaSurface Arena { get; private set; }
+        public Spell.Client.Visuals.ArenaRegistration Registration { get; private set; }
 
         Spell.Client.Diagnostics.DiagnosticsUpload journal;
         void Awake()
@@ -369,6 +371,8 @@ namespace Spell.Client.Preflight
                     status = "Ihrisko neprešlo kontrolou obsahu alebo platnosti dát.";
                     yield break;
                 }
+                Registration = ticket.survey == null ? Spell.Client.Visuals.ArenaRegistration.ForArena(Arena) :
+                    Spell.Client.Visuals.ArenaRegistration.FromSurvey(Arena,ticket.survey);
                 status = $"Ihrisko je v pamäti telefónu. Mriežka {Arena.Width} × {Arena.Height}.";
                 retry = Job.None;
             }
@@ -458,6 +462,7 @@ namespace Spell.Client.Preflight
             ClearQr();
             ticket = null;
             Arena = null;
+            Registration = null;
             paired = false;
             hostAttempt = joinAttempt = code = null;
             connectionNotice = "";

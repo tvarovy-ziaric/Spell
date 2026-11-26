@@ -18,7 +18,8 @@ namespace Spell.Client.Visuals
             public float[] boardB;
         }
         readonly MarkerCalibration survey;
-        ArenaRegistration(MarkerCalibration fit) { survey=fit; }
+        public MetricVector BoardBLocal { get; }
+        ArenaRegistration(MarkerCalibration fit, MetricVector boardBLocal) { survey=fit; BoardBLocal=boardBLocal; }
 
         public static ArenaRegistration ForArena(ArenaSurface terrain)
         {
@@ -39,10 +40,12 @@ namespace Spell.Client.Visuals
             var a = new MetricVector(data.boardA[0],data.boardA[1],data.boardA[2]);
             var b = new MetricVector(data.boardB[0],data.boardB[1],data.boardB[2]);
             if (!terrain.IsInPlayArea(a.X,a.Z) || !terrain.IsInPlayArea(b.X,b.Z)) return null;
+            var delta=b-a;
+            var boardBLocal=new MetricVector((float)Math.Sqrt(delta.X*delta.X+delta.Z*delta.Z),delta.Y,0);
             var status=MarkerCalibration.Fit(new MarkerPoint(0,a), new MarkerPoint(1,b),
-                new MarkerPoint(0,MetricVector.Zero),new MarkerPoint(1,MetricVector.UnitX*1.5f),
+                new MarkerPoint(0,MetricVector.Zero),new MarkerPoint(1,boardBLocal),
                 -MetricVector.UnitY,1f,.12f,out var fit);
-            return status==CalibrationStatus.Ready ? new ArenaRegistration(fit) : null;
+            return status==CalibrationStatus.Ready ? new ArenaRegistration(fit,boardBLocal) : null;
         }
 
         static MetricVector Metric(Vector3 v) => new MetricVector(v.x,v.y,v.z);

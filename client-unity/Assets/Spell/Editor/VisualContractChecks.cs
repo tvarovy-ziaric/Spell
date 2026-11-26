@@ -135,6 +135,8 @@ namespace Spell.Editor
             Check(projection!=null && ArenaRegistration.FromSurvey(arena,new ArenaRegistration.Survey{version=2})==null,"fail closed on unsupported survey");
             var testSurvey=new ArenaRegistration.Survey{version=1,arenaSha256=arena.Sha256,boardA=new[]{2f,102,2},boardB=new[]{2f,102,3.5f}};
             var rotated=ArenaRegistration.FromSurvey(arena,testSurvey);
+            var sloped=ArenaRegistration.FromSurvey(arena,new ArenaRegistration.Survey { version=1,arenaSha256=arena.Sha256,boardA=new[]{1f,105,2},boardB=new[]{5f,106,2} });
+            Check(sloped!=null && sloped.BoardBLocal.X==4f && sloped.BoardBLocal.Y==1f,"survey uses measured span and elevation difference");
             testSurvey.arenaSha256="wrong";
             Check(rotated!=null && ArenaRegistration.FromSurvey(arena,testSurvey)==null,"survey identity bound to exact package");
             testSurvey.arenaSha256=arena.Sha256; testSurvey.boardB=testSurvey.boardA;

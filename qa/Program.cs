@@ -18,6 +18,7 @@ var bytes = File.ReadAllBytes(Path.Combine(folder, "hill.bytes"));
 var digest = File.ReadAllText(Path.Combine(folder, "hill.sha256")).Trim();
 var surface = ArenaPreflight.Load(bytes, digest);
 var serverArena = new ArenaPackage(bytes, digest);
+SurveyChecks.Run(serverArena);
 LobbyChecks.Run(serverArena);
 CombatChecks.Run(serverArena);
 Assert(surface.TryHeight(3, 3, out var elevation) && elevation == 106 &&
