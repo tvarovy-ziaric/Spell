@@ -20,6 +20,10 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
     private ulong revision;
     private CombatReferee combat = new(arena.Surface, DuelRules.Default);
     private long lastStep = time.GetTimestamp();
+    private long lastPosePublication;
+    private bool pendingPosePublication;
+    private const long MaxPoseAgeUs = 800_000;
+    private long ServerUs => time.GetElapsedTime(0, time.GetTimestamp()).Ticks / 10;
     private bool combatNegotiated;
     public string PresetId { get; private set; } = Preset;
 
@@ -45,7 +49,7 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
         public string Unavailable = "tracking";
         public ulong LastSequence;
         public long LastDeviceUs;
-        public long ReceivedAt;
+        public long EstimatedServerUs;
         public double? MinClockOffsetUs;
         public bool Ready => Prepared && Tracking && Connection != null;
     }
@@ -178,13 +182,16 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
             {
                 p.LastSequence = pose.Sequence;
                 p.LastDeviceUs = pose.EstimatedUs;
-                p.ReceivedAt = time.GetTimestamp();
+                long arrivalUs = ServerUs;
                 // Minimum observed arrival offset cancels the arbitrary origin of the device clock.
                 // A queued old packet cannot regain readiness after a transport stall.
-                double arrivalUs = time.GetElapsedTime(0, p.ReceivedAt).TotalMicroseconds;
+
                 double offsetUs = arrivalUs - pose.EstimatedUs;
                 p.MinClockOffsetUs = Math.Min(p.MinClockOffsetUs ?? offsetUs, offsetUs);
-                p.Tracking = offsetUs - p.MinClockOffsetUs.Value < 800_000 && PoseUsable(pose);
+                double delayUs = offsetUs - p.MinClockOffsetUs.Value;
+                p.Tracking = delayUs < MaxPoseAgeUs && PoseUsable(pose);
+                if (p.Tracking) p.EstimatedServerUs = arrivalUs - (long)Math.Ceiling(delayUs);
+                pendingPosePublication |= p.Combat && p.Tracking;
                 p.Pose = p.Tracking ? pose.Clone() : null;
                 p.Unavailable = pose.Position != null && !arena.Surface.IsInPlayArea(pose.Position.East, pose.Position.North)
                     ? "boundary" : "tracking";
@@ -208,7 +215,7 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
             !double.IsFinite(s.AngleSigmaDeg) || s.AngleSigmaDeg is < 0 or > 10) return false;
         var q = s.Orientation;
         var norm = q.X*q.X + q.Y*q.Y + q.Z*q.Z + q.W*q.W;
-        return norm is >= 0.99 and <= 1.01 && double.IsFinite(s.Position.Up) &&
+        return norm is >= 0.99 and <= 1.01 && float.IsFinite((float)s.Position.Up) &&
             arena.Surface.IsInPlayArea(s.Position.East, s.Position.North);
     }
 
@@ -222,7 +229,7 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
         bool changed = false;
         foreach (var p in players.Values)
         {
-            if (!p.Tracking || time.GetElapsedTime(p.ReceivedAt) < TimeSpan.FromMilliseconds(800)) continue;
+            if (!p.Tracking || ServerUs - p.EstimatedServerUs < MaxPoseAgeUs) continue;
             changed |= p.Ready;
             p.Tracking = false;
             p.Pose = null;
@@ -261,6 +268,8 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
         }
         var next = canPlay ? Phase.Playing : phase == Phase.Preparing ? Phase.Preparing : Phase.Paused;
         if (next != phase || next != Phase.Playing) lastStep = now;
+        if (combatNegotiated && next == Phase.Playing && pendingPosePublication &&
+            time.GetElapsedTime(lastPosePublication, now).TotalMilliseconds >= 100) changed = true;
         if (next == phase && !changed) return;
         phase = next;
         Publish();
@@ -268,13 +277,37 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
 
     private void Publish()
     {
+        pendingPosePublication = false;
+        lastPosePublication = time.GetTimestamp();
         revision++;
         var frame = State();
         foreach (var p in players.Values) p.Connection?.Writer.TryWrite(frame);
     }
 
-    private ServerFrame State() => new() { Snapshot = new Snapshot { Phase = phase, Revision = revision,
-        Combat = combatNegotiated || players.Values.Any(p => p.Combat) ? combat.State() : null,
-        FounderReady = players.Values.Any(p => p.Role == "founder" && p.Ready),
-        GuestReady = players.Values.Any(p => p.Role == "guest" && p.Ready) } };
+    private ServerFrame State()
+    {
+        var snapshot = new Snapshot { Phase = phase, Revision = revision,
+            FounderReady = players.Values.Any(p => p.Role == "founder" && p.Ready),
+            GuestReady = players.Values.Any(p => p.Role == "guest" && p.Ready) };
+        if (combatNegotiated || players.Values.Any(p => p.Combat))
+        {
+            var state = combat.State();
+            state.ServerUs = ServerUs;
+            if (phase == Phase.Playing && combatNegotiated)
+            {
+                foreach (var player in players.Values)
+                {
+                    if (!player.Ready || player.Pose is not { } p ||
+                        state.ServerUs - player.EstimatedServerUs >= MaxPoseAgeUs) continue;
+                    var pose = new ArenaSeatPose { Sequence = p.Sequence, Position = p.Position.Clone(),
+                        Orientation = p.Orientation.Clone(), PositionSigmaM = p.PositionSigmaM,
+                        AngleSigmaDeg = p.AngleSigmaDeg, EstimatedServerUs = player.EstimatedServerUs };
+                    if (player.Role == "founder") state.FounderPose = pose;
+                    else state.GuestPose = pose;
+                }
+            }
+            snapshot.Combat = state;
+        }
+        return new ServerFrame { Snapshot = snapshot };
+    }
 }

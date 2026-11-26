@@ -23,6 +23,9 @@ namespace Spell.Client.Preflight
         Task sending;
         string seat;
         Snapshot snapshot;
+        readonly RemoteSeatReader opponent = new RemoteSeatReader();
+        static long LocalUs => (long)(Time.realtimeSinceStartupAsDouble * 1e6);
+        public bool TryGetOpponentPose(out ArenaSeatPose pose) => opponent.TryRead(LocalUs, out pose);
         ArenaRegistration registration;
         ArenaSurface surface;
         bool? ready;
@@ -37,7 +40,14 @@ namespace Spell.Client.Preflight
         long lastSample;
         double retryAt, nextPing, lastReceipt;
         public bool HasStarted { get; private set; }
-        public string Status { get; private set; } = "";
+        string status = "";
+        public string Status
+        {
+            get => snapshot?.Phase == Phase.Playing && snapshot.Combat?.Version == 1
+                ? status + (opponent.Fresh(LocalUs) ? " Poloha spoluhráča je čerstvá." : " Čakám na čerstvú polohu spoluhráča.")
+                : status;
+            private set => status = value;
+        }
 
         void Start()
         {
@@ -113,7 +123,9 @@ namespace Spell.Client.Preflight
             if (now >= nextPing)
             {
                 nextPing = now + 5;
-                Send(new ClientFrame { Ping = new Spell.Protocol.V1.Ping { ClientUs = (long)(now * 1e6) } });
+                long stamp = (long)(now * 1e6);
+                opponent.Ping(stamp);
+                Send(new ClientFrame { Ping = new Spell.Protocol.V1.Ping { ClientUs = stamp } });
                 return;
             }
             var timing = device.Timing;
@@ -151,7 +163,7 @@ namespace Spell.Client.Preflight
             lifetime = run;
             try
             {
-                Status = "PripĂˇjam hernĂ© spojenieâ€¦";
+                Status = "Pripájam herné spojenie…";
                 ws.Options.SetRequestHeader("Authorization", "Bearer " + seat);
                 run.CancelAfter(TimeSpan.FromSeconds(10));
                 await ws.ConnectAsync(new Uri("wss://spell.arnavigator.site/v1/events"), run.Token);
@@ -175,7 +187,10 @@ namespace Spell.Client.Preflight
                     var message = ServerFrame.Parser.ParseFrom(bytes,0,total);
                     if (message.Snapshot != null) Apply(message.Snapshot);
                     if (message.Pong != null)
+                    {
                         RoundTripMs = Math.Max(0,Time.realtimeSinceStartupAsDouble*1000 - message.Pong.ClientUs/1000.0);
+                        opponent.Pong(message.Pong.ClientUs, message.Pong.ServerUs, LocalUs);
+                    }
                 }
             }
             catch (Exception) { /* Repeat the authenticated handshake using the existing seat. */ }
@@ -208,20 +223,21 @@ namespace Spell.Client.Preflight
                         journal?.Events?.Event(PilotEvent.Impact, (int)Math.Min((ulong)int.MaxValue, hit.Id));
                     }
             }
+            opponent.Replace(value, online.IsFounder);
             if (value.Phase == Phase.Playing) HasStarted = true;
             double now = Time.realtimeSinceStartupAsDouble;
             var combat = value.Combat;
-            Status = value.Phase == Phase.Preparing ? "HernĂ© spojenie pripravenĂ©. ÄŚakĂˇm na kalibrĂˇciu oboch hrĂˇÄŤov." :
-                value.Phase == Phase.Paused ? "SĂşboj pozastavenĂ˝." : "SĂşboj prebieha.";
+            Status = value.Phase == Phase.Preparing ? "Herné spojenie pripravené. Čakám na kalibráciu oboch hráčov." :
+                value.Phase == Phase.Paused ? "Súboj pozastavený." : "Súboj prebieha.";
             if (combat == null || combat.Version != 1) { visuals.ClearFlights(); return; }
             command = Math.Max(command, online.IsFounder ? combat.FounderCommand : combat.GuestCommand);
-            Status += $" HP {combat.FounderHp} / {combat.GuestHp}.";
-            Status += combat.Safety switch {
-                "warning" or "uncertain" or "collision" => " Ste prĂ­liĹˇ blĂ­zko. Zastavte sa a zvĂ¤ÄŤĹˇite odstup.",
-                "boundary" => " VrĂˇĹĄ sa do hranĂ­c ihriska.",
-                "tracking" => " Zameraj znova terÄŤĂ­ky.",
-                "mixed-version" => " Obaja potrebujete rovnakĂş podporovanĂş verziu.", _ => "" };
-            if (combat.Finished) Status = $"SĂşboj sa skonÄŤil. HP {combat.FounderHp} / {combat.GuestHp}.";
+            status += $" HP {combat.FounderHp} / {combat.GuestHp}.";
+            status += combat.Safety switch {
+                "warning" or "uncertain" or "collision" => " Ste príliš blízko. Zastavte sa a zväčšite odstup.",
+                "boundary" => " Vráť sa do hraníc ihriska.",
+                "tracking" => " Zameraj znova terčíky.",
+                "mixed-version" => " Obaja potrebujete rovnakú podporovanú verziu.", _ => "" };
+            if (combat.Finished) Status = $"Súboj sa skončil. HP {combat.FounderHp} / {combat.GuestHp}.";
             var boards = GetComponent<BoardCalibration>();
             if (registration == null || boards == null || !boards.TryGetSharedFrame(out var frame) || value.Phase != Phase.Playing)
             { visuals.ClearFlights(); return; }
@@ -236,11 +252,13 @@ namespace Spell.Client.Preflight
                 if (!recentImpacts.Add(impact.Id)) continue;
                 impactOrder.Enqueue(impact.Id);
                 if (impactOrder.Count > 32) recentImpacts.Remove(impactOrder.Dequeue());
-                if (combat.GameUs - impact.GameUs <= 300000) visuals.ConfirmImpact(impact.Id,ToView(impact.Position),now);
+                if (impact.Result != "interrupted" && combat.GameUs - impact.GameUs <= 300000) visuals.ConfirmImpact(impact.Id,ToView(impact.Position),now);
             }
         }
         void StopSocket()
         {
+            opponent.Reset();
+            nextPing = 0;
             var old = socket;
             if (old != null) journal?.Events?.Event(PilotEvent.Connection, 0);
             socket = null;
@@ -250,7 +268,7 @@ namespace Spell.Client.Preflight
             if (sending?.IsFaulted == true) _ = sending.Exception;
             sending = null; ready = null; snapshot = null; cast = false; lastPose = 0; lastSample = 0;
             visuals?.ClearFlights(); visuals?.ClearAim();
-            Status = seat == null ? "" : "HernĂ© spojenie sa obnovujeâ€¦";
+            Status = seat == null ? "" : "Herné spojenie sa obnovuje…";
         }
         void OnApplicationPause(bool paused) { inBackground = paused; if (paused) StopSocket(); }
         void OnDestroy() { if (visuals != null) visuals.CastRequested -= RequestCast; StopSocket(); }

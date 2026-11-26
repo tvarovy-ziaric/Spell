@@ -42,11 +42,11 @@ internal static class CombatChecks
             Move(1, 2.45, 105.1, 3);
         }
 
-        public void Move(int seat, double east, double up, double north, double sigma = .01)
+        public void Move(int seat, double east, double up, double north, double sigma = .01, long delayUs = 0)
         {
             var p = poses[seat];
             p.Sequence++;
-            p.EstimatedUs = Math.Max(clock.Now, p.EstimatedUs + 1);
+            p.EstimatedUs = Math.Max(clock.Now - delayUs, p.EstimatedUs + 1);
             p.LastVisualUs = p.EstimatedUs;
             p.Position = new Vector3M { East = east, Up = up, North = north };
             p.PositionSigmaM = sigma;
@@ -85,6 +85,26 @@ internal static class CombatChecks
         Check(FireballPath.Trace(s, 1, 107, 3, 0, 0, 0, 20).EndKind == FlightEndKind.Unknown, "zero");
         var pair = new Pair(arena);
         Check(pair.State().Phase == Phase.Playing, "two versions negotiated");
+        var firstState = pair.State();
+        var remote = new Spell.Client.Preflight.RemoteSeatReader();
+        remote.Replace(firstState, true);
+        Check(!remote.Fresh(100), "read requires monotonic sync");
+        remote.Ping(100); remote.Pong(100, firstState.Combat.ServerUs, 200);
+        Check(remote.TryRead(201, out var other) && other.Position.East == 2.45 && other.Sequence == 1,
+            "founder reads only guest arena pose");
+        other.Position.East = 999;
+        Check(remote.TryRead(202, out other) && other.Position.East == 2.45, "consumer cannot alter authoritative state");
+        Check(!remote.Fresh(800200), "delayed snapshot expires locally");
+        remote.Replace(firstState, false);
+        Check(remote.TryRead(203, out other) && other.Position.East == 1, "guest reads founder");
+        remote.Replace(new Snapshot { Phase=Phase.Paused, Combat=firstState.Combat }, true);
+        Check(!remote.Fresh(205), "pause revokes a previous sample");
+        remote.Reset(); remote.Replace(firstState,true);
+        Check(!remote.Fresh(206), "reconnect invalidates synchronization");
+        Check(FireballPath.Trace(s,1,107,3,1,0,0,4).EndKind==FlightEndKind.Boundary,
+            "range exactly at edge cannot damage");
+        Check(FireballPath.Trace(s,1,106,1,4,-6,0,20).EndKind==FlightEndKind.Boundary,
+            "terrain contact exactly at edge cannot damage");
         pair.Cast(1);
         var cast = pair.State().Combat.Flights.Single();
         Check(cast.Kind == "terrain" && Math.Abs(cast.DurationUs - 150000) <= 1, "duration from authoritative path, speed");
@@ -113,6 +133,17 @@ internal static class CombatChecks
         Check(pair.State().Combat.Flights.Count == 0, "retry after reconnect");
         pair.Move(1, 7, 105, 3);
         Check(pair.State().Combat.Safety == "boundary" && pair.State().Phase == Phase.Paused, "outside hold");
+        var delayed = new Pair(arena);
+        delayed.Advance(700_000);
+        delayed.Move(0, 1, 105, 3);
+        delayed.Move(1, 2.5, 105.1, 3, delayUs: 650_000);
+        delayed.Advance(100_000);
+        Check(delayed.State().Combat.GuestPose.Position.East == 2.5, "movement published even without active flight");
+        delayed.Advance(51_000);
+        Check(delayed.State().Phase == Phase.Paused && delayed.State().Combat.GuestPose == null,
+            "ingress delay counts towards expiration; peer pose removed");
+        delayed.Move(1, 2.5, double.MaxValue, 3);
+        Check(delayed.State().Combat.GuestPose == null, "value not representable on mobile rejected");
         pair = new Pair(arena, DuelRules.Default with { AuraPenalty = 20, Radius = 3 });
         pair.Move(1, 4, 105, 3);
         Check(pair.State().Combat.Sight == "blocked", "ridge hides opponent");

@@ -28,18 +28,19 @@ namespace Spell.Geometry
             dirEast /= norm;
             dirUp /= norm;
             dirNorth /= norm;
-            double limit = Math.Min(range, Math.Min(
-                ToEdge(east, dirEast, arena.West, arena.East), ToEdge(north, dirNorth, arena.South, arena.North)));
+            double boundary = Math.Min(ToEdge(east, dirEast, arena.West, arena.East),
+                ToEdge(north, dirNorth, arena.South, arena.North));
+            double limit = Math.Min(range, boundary);
             // Clamp floating-point roundoff at a boundary before querying the grid.
             double e = Math.Max(arena.West, Math.Min(arena.East, east + dirEast * limit));
             double n = Math.Max(arena.South, Math.Min(arena.North, north + dirNorth * limit));
             double u = up + dirUp * limit;
             var hit = arena.IntersectSegment(east, north, up, e, n, u, out double fraction);
             if (hit == TerrainIntersection.Unknown) return default;
-            if (hit == TerrainIntersection.Hit)
+            if (hit == TerrainIntersection.Hit && (range < boundary || limit * (1 - fraction) > 1e-9))
                 return new FireballPath(FlightEndKind.Terrain, east + (e - east) * fraction,
                     up + (u - up) * fraction, north + (n - north) * fraction, limit * fraction);
-            return new FireballPath(limit < range ? FlightEndKind.Boundary : FlightEndKind.Range, e, u, n, limit);
+            return new FireballPath(boundary <= range ? FlightEndKind.Boundary : FlightEndKind.Range, e, u, n, limit);
         }
 
         static bool Finite(double v) => !double.IsNaN(v) && !double.IsInfinity(v);
