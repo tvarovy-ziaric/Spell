@@ -11,6 +11,8 @@ ROOT = Path(__file__).resolve().parents[1]
 lib = ROOT / "client-unity/Assets/Plugins/SpellProtocol"
 if hashlib.sha256((lib / "Google.Protobuf.dll").read_bytes()).hexdigest() != "47f3d4534309a33fec7241e995151935628e54511142515a647d67d74710d67a":
     raise ValueError("Android protobuf runtime differs from the netstandard2.0 assembly in Google.Protobuf 3.36.2")
+if hashlib.sha256((lib / "System.Runtime.CompilerServices.Unsafe.dll").read_bytes()).hexdigest() != "bfc8f02a96934786ca5a0514a3b657021c12542e215e94b78fdcc74bfeffe3d3":
+    raise ValueError("Android Unsafe runtime differs from NuGet 4.5.3")
 packages = Path(os.environ.get("NUGET_PACKAGES", Path.home() / ".nuget/packages"))
 version = ET.parse(ROOT / "server/Spell.Server.csproj").find(".//PackageReference[@Include='Grpc.Tools']").get("Version")
 system = {"Windows": "windows", "Linux": "linux", "Darwin": "macosx"}[platform.system()]
