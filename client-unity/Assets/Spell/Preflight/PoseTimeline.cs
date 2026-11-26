@@ -1,3 +1,4 @@
+#nullable enable
 namespace Spell.Client.Preflight
 {
     // Camera and GNSS retain their original clock values. Visual freshness uses local receipt time.
@@ -5,14 +6,16 @@ namespace Spell.Client.Preflight
     {
         public readonly long Sequence, EstimatedUs, LastGnssUs, LastCameraUs;
         public readonly bool HasRecentTracking;
+        public readonly ParticipantBearing? ParticipantDirection;
 
-        internal PoseTiming(long sequence, long now, long gnss, long frame, bool tracking)
+        internal PoseTiming(long sequence, long now, long gnss, long frame, bool tracking, ParticipantBearing? participant)
         {
             Sequence = sequence;
             EstimatedUs = now;
             LastGnssUs = gnss;
             LastCameraUs = frame;
             HasRecentTracking = tracking;
+            ParticipantDirection = participant;
         }
     }
 
@@ -20,6 +23,8 @@ namespace Spell.Client.Preflight
     {
         private long lastFix, cameraFrame, visualReceipt, lastPublish, sequence;
         private bool tracking;
+        readonly ParticipantObservations? participant;
+        public PoseTimeline(ParticipantObservations? participant = null) { this.participant = participant; }
 
         public bool ObserveGnss(long fixUs)
         {
@@ -34,6 +39,7 @@ namespace Spell.Client.Preflight
             cameraFrame = frameUs;
             visualReceipt = receivedUs;
             tracking = isTracking;
+            if (!tracking) participant?.LoseTracking(receivedUs);
             return true;
         }
 
@@ -43,7 +49,10 @@ namespace Spell.Client.Preflight
             if (nowUs <= 0 || (sequence > 0 && nowUs - lastPublish < 100_000)) return false;
             lastPublish = nowUs;
             bool recent = tracking && nowUs >= visualReceipt && nowUs - visualReceipt < 800_000;
-            sample = new PoseTiming(++sequence, nowUs, lastFix, cameraFrame, recent);
+            ParticipantBearing? direction = null;
+            if (recent && participant != null && participant.TryRead(nowUs, out var current))
+                direction = current;
+            sample = new PoseTiming(++sequence, nowUs, lastFix, cameraFrame, recent, direction);
             return true;
         }
     }

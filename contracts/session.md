@@ -24,6 +24,8 @@ Pre syntetickú skúšku sú pracovné maximá neistoty 3 m a 10°. Skutočné p
 
 `VisualObservation` je rozhranie pre lokálny vizuálny modul. Smer je jednotkový vektor. Pre potvrdenú značku je prípustné ID známej značky s časom snímky a kvalitou v rozsahu 0 až 1. Stratená identita účastníka zruší oprávnenie použiť pozorovanie na korekciu. Mobilná diagnostika používa dve vopred známe dosky. Identifikácia osôb čaká na ďalšiu etapu.
 
+Voliteľný zdroj smeru protihráča v1 prijíma iba dočasnú referenciu, ktorú účastník potvrdil pre konkrétnu reláciu. Čas snímky aj príjmu vstupuje v mikrosekundách na tej istej monotónnej osi. `PoseTimeline` publikuje jednotkový smer iba pri jedinom potvrdenom kandidátovi, čerstvej snímke a dôveryhodnom sledovaní kamery. Žiadny zdroj alebo chýbajúce pozorovanie ponechá smer prázdny. Odhad vzdialenosti, polohy, fyzika a kalibrácia sa týmto údajom nemenia. Automatické skúšky používajú výlučne syntetické identifikátory a smery. Zapojenie fyzickej dobrovoľnej značky hráča a jej asociáciu s reláciou musí overiť skúška na mieste.
+
 | Príklad | Očakávané správanie |
 | --- | --- |
 | Odhad pohybu s časom 1 200 000 µs, posledný GNSS fix 1 080 000 µs a čerstvá AR snímka | Akceptovať príslušný odhad, čas pôvodného fixu ostáva 1 080 000 µs. |

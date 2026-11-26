@@ -10,6 +10,7 @@ using Spell.Protocol.V1;
 using Spell.Server;
 
 var folder = args[0];
+ParticipantObservationChecks.Run();
 PoseReplay.Run(Path.Combine(folder, "timing.csv"));
 var bytes = File.ReadAllBytes(Path.Combine(folder, "hill.bytes"));
 var digest = File.ReadAllText(Path.Combine(folder, "hill.sha256")).Trim();
