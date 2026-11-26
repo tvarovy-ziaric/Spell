@@ -23,6 +23,12 @@ public final class GnssProbe {
 
     public static long elapsedUs() { return SystemClock.elapsedRealtimeNanos() / 1000; }
 
+    public static int thermalStatus(Activity activity) {
+        if (android.os.Build.VERSION.SDK_INT < 29) return -1;
+        android.os.PowerManager power = (android.os.PowerManager) activity.getSystemService(Context.POWER_SERVICE);
+        return power == null ? -1 : power.getCurrentThermalStatus();
+    }
+
     public static synchronized long lastFixUs() { return lastFixNs / 1000; }
 
     public static String capabilities(Activity activity) {

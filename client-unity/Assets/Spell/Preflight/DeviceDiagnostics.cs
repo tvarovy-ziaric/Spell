@@ -16,6 +16,7 @@ namespace Spell.Client.Preflight
         public bool Running { get; private set; }
         public string Status { get; private set; } = "Diagnostika zistí stav ARCore, kamery a GNSS. Merania zostávajú v tomto telefóne.";
         Camera view;
+        public Pose ViewPose => new Pose(view.transform.position, view.transform.rotation);
         GameObject trackingOrigin;
         BoardCalibration boards;
         ARCameraManager cameraManager;
@@ -25,6 +26,7 @@ namespace Spell.Client.Preflight
 #if UNITY_ANDROID && !UNITY_EDITOR
         AndroidJavaClass gnss;
         string hardware;
+        double thermalCheckAt;
         PermissionCallbacks permissionCallbacks;
         PoseTimeline timeline = new PoseTimeline();
         PoseTiming timing;
@@ -136,6 +138,13 @@ namespace Spell.Client.Preflight
         void OnApplicationPause(bool paused)
         {
             if (gnss == null) return;
+            if (Time.unscaledTimeAsDouble >= thermalCheckAt)
+            {
+                thermalCheckAt=Time.unscaledTimeAsDouble+5;
+                using var player=new AndroidJavaClass("com.unity3d.player.UnityPlayer");
+                using var activity=player.GetStatic<AndroidJavaObject>("currentActivity");
+                GetComponent<Spell.Client.Visuals.DuelVisuals>()?.ApplyThermalStatus(gnss.CallStatic<int>("thermalStatus",activity));
+            }
             if (paused) gnss.CallStatic("stop");
             else
             {
