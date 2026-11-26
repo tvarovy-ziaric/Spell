@@ -33,18 +33,52 @@ message Ready {
   string preset = 3;
   bool loaded_in_ram = 4;
   bool calibrated = 5;
+  uint32 combat_version = 6; // 0: readiness-only diagnostic, 1: both seats opt into referee
 }
 enum Phase { PREPARING = 0; PLAYING = 1; PAUSED = 2; }
 message Ping { int64 client_us = 1; }
 message Pong { int64 client_us = 1; int64 server_us = 2; }
+message CastFireball {
+  uint64 command_id = 1; // per-seat increasing id, retained across reconnects
+  uint64 pose_sequence = 2;
+}
+message FireballFlight {
+  uint64 id = 1;
+  string owner = 2;
+  Vector3M start = 3;
+  Vector3M end = 4;
+  int64 duration_us = 5;
+  int64 start_game_us = 6;
+  string kind = 7; // terrain, range, boundary
+}
+message Impact {
+  uint64 id = 1; // same as flight
+  Vector3M position = 2;
+  int64 game_us = 3;
+  string result = 4; // hit, miss, disputed, occluded, boundary
+}
+message CombatSnapshot {
+  uint32 version = 1;
+  int64 game_us = 2;
+  int32 founder_hp = 3;
+  int32 guest_hp = 4;
+  repeated FireballFlight flights = 5;
+  repeated Impact impacts = 6; // last 8; idempotent visual/audio playback by id
+  string safety = 7; // clear, warning, uncertain, collision, tracking, boundary, mixed-version
+  string sight = 8; // clear, blocked, unknown
+  bool finished = 9;
+  uint64 founder_command = 10; // highest consumed id
+  uint64 guest_command = 11;
+}
 message Snapshot {
   Phase phase = 1;
   uint64 revision = 2;
   bool founder_ready = 3;
   bool guest_ready = 4;
+  CombatSnapshot combat = 5;
 }
 message ClientFrame {
-  oneof payload { Ready ready = 1; PoseSample pose = 2; Ping ping = 3; }
+  oneof payload { Ready ready = 1; PoseSample pose = 2; Ping ping = 3; CastFireball cast = 4; }
 }
 message ServerFrame {
   oneof payload { Snapshot snapshot = 1; Pong pong = 2; }

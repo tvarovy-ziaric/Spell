@@ -18,6 +18,21 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
     private (string Attempt, Seat Seat, Invitation Original)? founderRequest;
     private Phase phase = Phase.Preparing;
     private ulong revision;
+    private CombatReferee combat = new(arena.Surface, DuelRules.Default);
+    private long lastStep = time.GetTimestamp();
+    private bool combatNegotiated;
+    public string PresetId { get; private set; } = Preset;
+
+    internal void ConfigureRules(string presetId, DuelRules rules)
+    {
+        lock (gate)
+        {
+            if (players.Count != 0 || string.IsNullOrWhiteSpace(presetId) || !rules.IsValid())
+                throw new InvalidOperationException("Rules must be validated and frozen before seating.");
+            PresetId = presetId;
+            combat = new CombatReferee(arena.Surface, rules);
+        }
+    }
 
     private sealed class Player(string role)
     {
@@ -25,6 +40,9 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
         public Channel<ServerFrame>? Connection;
         public bool Prepared;
         public bool Tracking;
+        public bool Combat;
+        public PoseSample? Pose;
+        public string Unavailable = "tracking";
         public ulong LastSequence;
         public long LastDeviceUs;
         public long ReceivedAt;
@@ -127,6 +145,9 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
             bool wasReady = p.Ready;
             p.Connection = null;
             p.Prepared = p.Tracking = false;
+            p.Pose = null;
+            p.Unavailable = "tracking";
+            combat.ResetPoseSequence(p.Role);
             p.LastSequence = 0;
             p.LastDeviceUs = 0;
             p.MinClockOffsetUs = null;
@@ -148,8 +169,11 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
                 return;
             }
             if (frame.Ready is { } ready)
-                p.Prepared = ready.LoadedInRam && ready.Calibrated && ready.ArenaRevision == ArenaRevision
-                    && ready.ArenaSha256 == arena.Digest && ready.Preset == Preset;
+            {
+                p.Combat = ready.CombatVersion == 1;
+                p.Prepared = ready.CombatVersion <= 1 && ready.LoadedInRam && ready.Calibrated && ready.ArenaRevision == ArenaRevision
+                    && ready.ArenaSha256 == arena.Digest && ready.Preset == PresetId;
+            }
             if (frame.Pose is { } pose && pose.Sequence > p.LastSequence && pose.EstimatedUs > p.LastDeviceUs)
             {
                 p.LastSequence = pose.Sequence;
@@ -161,9 +185,14 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
                 double offsetUs = arrivalUs - pose.EstimatedUs;
                 p.MinClockOffsetUs = Math.Min(p.MinClockOffsetUs ?? offsetUs, offsetUs);
                 p.Tracking = offsetUs - p.MinClockOffsetUs.Value < 800_000 && PoseUsable(pose);
+                p.Pose = p.Tracking ? pose.Clone() : null;
+                p.Unavailable = pose.Position != null && !arena.Surface.IsInPlayArea(pose.Position.East, pose.Position.North)
+                    ? "boundary" : "tracking";
             }
             bool expired = ExpireTracking();
             Update(expired || wasReady != p.Ready);
+            if (frame.Cast is { } cast && combatNegotiated && p.Combat &&
+                combat.Cast(p.Role, p.Pose, cast, phase == Phase.Playing)) Publish();
         }
     }
 
@@ -196,22 +225,56 @@ public sealed class DuelLobby(ArenaPackage arena, TimeProvider time)
             if (!p.Tracking || time.GetElapsedTime(p.ReceivedAt) < TimeSpan.FromMilliseconds(800)) continue;
             changed |= p.Ready;
             p.Tracking = false;
+            p.Pose = null;
+            p.Unavailable = "tracking";
         }
         return changed;
     }
 
     private void Update(bool changed)
     {
-        var next = players.Count == 2 && players.Values.All(p => p.Ready)
-            ? Phase.Playing : phase == Phase.Preparing ? Phase.Preparing : Phase.Paused;
+        long now = time.GetTimestamp();
+        long elapsedUs = time.GetElapsedTime(lastStep, now).Ticks / 10;
+        var founder = players.Values.FirstOrDefault(p => p.Role == "founder");
+        var guest = players.Values.FirstOrDefault(p => p.Role == "guest");
+        bool canPlay = founder?.Ready == true && guest?.Ready == true;
+        if (!combatNegotiated && founder?.Combat == true && guest?.Combat == true)
+        {
+            combatNegotiated = true;
+            changed = true;
+        }
+        if (combatNegotiated || founder?.Combat == true || guest?.Combat == true)
+        {
+            bool compatible = founder?.Combat == true && guest?.Combat == true;
+            string unavailable = !compatible ? "mixed-version" :
+                founder?.Unavailable == "boundary" || guest?.Unavailable == "boundary" ? "boundary" : "tracking";
+            changed |= combat.Evaluate(compatible && canPlay ? founder?.Pose : null,
+                compatible && canPlay ? guest?.Pose : null, unavailable, phase != Phase.Preparing);
+            canPlay &= compatible && !combat.Finished && combat.Safety is "clear" or "warning";
+            if (phase == Phase.Playing && canPlay)
+            {
+                changed |= combat.Advance(elapsedUs, founder!.Pose!, guest!.Pose!);
+                lastStep = now;
+                canPlay &= !combat.Finished;
+            }
+            if (!canPlay) changed |= combat.Interrupt();
+        }
+        var next = canPlay ? Phase.Playing : phase == Phase.Preparing ? Phase.Preparing : Phase.Paused;
+        if (next != phase || next != Phase.Playing) lastStep = now;
         if (next == phase && !changed) return;
         phase = next;
+        Publish();
+    }
+
+    private void Publish()
+    {
         revision++;
         var frame = State();
         foreach (var p in players.Values) p.Connection?.Writer.TryWrite(frame);
     }
 
     private ServerFrame State() => new() { Snapshot = new Snapshot { Phase = phase, Revision = revision,
+        Combat = combatNegotiated || players.Values.Any(p => p.Combat) ? combat.State() : null,
         FounderReady = players.Values.Any(p => p.Role == "founder" && p.Ready),
         GuestReady = players.Values.Any(p => p.Role == "guest" && p.Ready) } };
 }
