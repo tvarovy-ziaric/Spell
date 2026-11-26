@@ -116,6 +116,22 @@ namespace Spell.Editor
             var dir=Path.GetFullPath(Path.Combine(Application.dataPath,"../../contracts/fixtures"));
             var arena=ArenaSurface.Load(File.ReadAllBytes(Path.Combine(dir,"hill.bytes")),File.ReadAllText(Path.Combine(dir,"hill.sha256")).Trim());
             var projection=ArenaRegistration.ForArena(arena);
+            var mesh = new Mesh();
+            try
+            {
+                Vector3 zero=TerrainDebugPatch.Bake(arena,2,2,mesh);
+                var indices=mesh.GetIndices(0);
+                Check(mesh.vertexCount==49 && indices.Length>0 && Array.IndexOf(indices,0)<0,"mesh uses 7x7 RAM grid and omits NoData triangles");
+                Check(Close(zero+mesh.vertices[24],new Vector3(3,106,3)),"debug mesh reproduces the fixture summit");
+                using var patch=new TerrainDebugPatch();
+                MarkerCalibration.Fit(new MarkerPoint(0,V3.Zero),new MarkerPoint(1,V3.UnitX*1.5f),
+                    new MarkerPoint(0,V3.Zero),new MarkerPoint(1,V3.UnitX*1.5f),-V3.UnitY,1,.12f,out var syntheticFrame);
+                patch.Update(arena,projection,syntheticFrame,Vector3.zero);
+                Check(GameObject.Find("Mriežka výšok ihriska"),"trustworthy frame shows exact surface");
+                patch.Update(arena,projection,null,Vector3.zero);
+                Check(!GameObject.Find("Mriežka výšok ihriska"),"lost registration immediately hides debug terrain");
+            }
+            finally { UnityEngine.Object.DestroyImmediate(mesh); }
             Check(projection!=null && ArenaRegistration.FromSurvey(arena,new ArenaRegistration.Survey{version=2})==null,"fail closed on unsupported survey");
             var testSurvey=new ArenaRegistration.Survey{version=1,arenaSha256=arena.Sha256,boardA=new[]{2f,102,2},boardB=new[]{2f,102,3.5f}};
             var rotated=ArenaRegistration.FromSurvey(arena,testSurvey);
